@@ -3,6 +3,25 @@ const client = require('../lib/twelvelabs-client');
 
 const router = Router();
 
+function waitForAssetReady(assetId, maxAttempts = 60) {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const poll = async () => {
+      attempts++;
+      try {
+        const asset = await client.assets.retrieve(assetId);
+        if (asset.status === 'ready') return resolve(asset);
+        if (asset.status === 'failed') return reject(new Error('Asset processing failed'));
+        if (attempts >= maxAttempts) return reject(new Error('Asset processing timed out'));
+        setTimeout(poll, 2000);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    poll();
+  });
+}
+
 router.post('/', async (req, res, next) => {
   try {
     const { indexId, url, title } = req.body;
@@ -18,16 +37,19 @@ router.post('/', async (req, res, next) => {
       enableThumbnail: true,
     });
 
-    const indexedAsset = await client.indexes.indexedAssets.create(indexId, {
-      assetId: asset.id,
-      enableVideoStream: true,
-    });
-
     res.status(202).json({
       assetId: asset.id,
-      indexedAssetId: indexedAsset.id,
-      status: indexedAsset.status,
+      status: 'processing',
     });
+
+    waitForAssetReady(asset.id)
+      .then(() =>
+        client.indexes.indexedAssets.create(indexId, {
+          assetId: asset.id,
+          enableVideoStream: true,
+        })
+      )
+      .catch(() => {});
   } catch (err) {
     next(err);
   }
