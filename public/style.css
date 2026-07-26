@@ -142,9 +142,6 @@ body {
   border-radius: 6px;
   margin-bottom: 4px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 0.85rem;
   transition: background 0.1s;
 }
@@ -153,11 +150,49 @@ body {
   background: #f3f4f6;
 }
 
+.video-item-content {
+  width: 100%;
+}
+
+.video-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 #video-list li .video-name {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.progress-bar {
+  margin-top: 6px;
+  height: 3px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 40%;
+  background: #4f46e5;
+  border-radius: 2px;
+  animation: progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(150%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
 }
 
 #video-list li .badge {

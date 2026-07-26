@@ -114,18 +114,24 @@ async function loadVideos() {
 
 function renderVideos(videos) {
   if (!videos.length) {
-    videoList.innerHTML = '<li style="color:#71717a">영상이 없습니다.</li>';
+    videoList.innerHTML = '<li style="color:#6b7280">영상이 없습니다.</li>';
     return;
   }
 
   videoList.innerHTML = videos
     .map((v) => {
       const badge = getBadge(v.status);
+      const isProcessing = v.status !== 'ready' && v.status !== 'failed';
       return `
       <li data-id="${v.id}" data-asset-id="${v.assetId || ''}">
-        <span class="video-name">${escapeHtml(v.name || '제목 없음')}</span>
-        <span class="badge ${badge.cls}">${badge.label}</span>
-        <button class="btn-delete-video" data-id="${v.id}" title="삭제">&times;</button>
+        <div class="video-item-content">
+          <div class="video-item-row">
+            <span class="video-name">${escapeHtml(v.name || '제목 없음')}</span>
+            <span class="badge ${badge.cls}">${badge.label}</span>
+            <button class="btn-delete-video" data-id="${v.id}" title="삭제">&times;</button>
+          </div>
+          ${isProcessing ? '<div class="progress-bar"><div class="progress-bar-fill"></div></div>' : ''}
+        </div>
       </li>`;
     })
     .join('');
