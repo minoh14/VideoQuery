@@ -14,6 +14,7 @@ router.post('/', async (req, res, next) => {
       indexId,
       queryText: query,
       searchOptions: searchOptions || ['visual', 'audio'],
+      pageLimit: 20,
     });
 
     const clips = (result.data || []).map((item) => ({

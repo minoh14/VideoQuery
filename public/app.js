@@ -5,6 +5,7 @@ let currentProject = null;
 let queryMode = 'search';
 let deleteTarget = null;
 let pollInterval = null;
+let queryController = null;
 
 // DOM refs
 const projectsView = document.getElementById('projects-view');
@@ -206,6 +207,7 @@ async function deleteVideo() {
     deleteTarget = null;
     closeModals();
     loadVideos();
+    resultsArea.innerHTML = '<p class="placeholder-text">검색 또는 분석 결과가 여기에 표시됩니다.</p>';
   } catch (err) {
     alert('영상 삭제에 실패했습니다.');
   } finally {
@@ -219,6 +221,14 @@ async function executeQuery() {
   const query = queryInput.value.trim();
   if (!query || !currentProject) return;
 
+  if (queryController) queryController.abort();
+  queryController = new AbortController();
+  const signal = queryController.signal;
+
+  resultsArea.querySelectorAll('video').forEach((v) => {
+    v.pause();
+    v.src = '';
+  });
   resultsArea.innerHTML = '<div class="loading">처리 중...</div>';
 
   try {
@@ -231,9 +241,11 @@ async function executeQuery() {
           query,
           searchOptions: ['visual', 'audio'],
         }),
+        signal,
       });
       if (!res.ok) throw new Error('검색 실패');
       const data = await res.json();
+      if (signal.aborted) return;
       renderSearchResults(data.clips);
     } else {
       const res = await fetch(`${API}/api/analyze`, {
@@ -243,12 +255,15 @@ async function executeQuery() {
           assetId: getFirstReadyAssetId(),
           prompt: query,
         }),
+        signal,
       });
       if (!res.ok) throw new Error('분석 실패');
       const data = await res.json();
+      if (signal.aborted) return;
       renderAnalyzeResult(data.text);
     }
   } catch (err) {
+    if (err.name === 'AbortError') return;
     resultsArea.innerHTML = `<p class="placeholder-text">오류: ${escapeHtml(err.message)}</p>`;
   }
 }
@@ -259,6 +274,8 @@ function getFirstReadyAssetId() {
 }
 
 function renderSearchResults(clips) {
+  resultsArea.innerHTML = '';
+
   if (!clips || !clips.length) {
     resultsArea.innerHTML = '<p class="placeholder-text">검색 결과가 없습니다.</p>';
     return;
@@ -408,6 +425,7 @@ document.getElementById('mode-search').addEventListener('click', () => {
   document.getElementById('mode-search').classList.add('active');
   document.getElementById('mode-analyze').classList.remove('active');
   queryInput.placeholder = '검색할 장면을 설명하세요...';
+  resultsArea.innerHTML = '<p class="placeholder-text">검색 또는 분석 결과가 여기에 표시됩니다.</p>';
 });
 
 document.getElementById('mode-analyze').addEventListener('click', () => {
@@ -415,6 +433,7 @@ document.getElementById('mode-analyze').addEventListener('click', () => {
   document.getElementById('mode-analyze').classList.add('active');
   document.getElementById('mode-search').classList.remove('active');
   queryInput.placeholder = '영상에 대해 질문하세요...';
+  resultsArea.innerHTML = '<p class="placeholder-text">검색 또는 분석 결과가 여기에 표시됩니다.</p>';
 });
 
 queryInput.addEventListener('keydown', (e) => {
