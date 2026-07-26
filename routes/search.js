@@ -25,6 +25,20 @@ router.post('/', async (req, res, next) => {
       transcription: item.transcription,
     }));
 
+    const videoIds = [...new Set(clips.map((c) => c.videoId).filter(Boolean))];
+    const hlsMap = {};
+    await Promise.all(
+      videoIds.map(async (id) => {
+        try {
+          const asset = await client.indexes.indexedAssets.retrieve(indexId, id);
+          if (asset.hls?.videoUrl) hlsMap[id] = asset.hls.videoUrl;
+        } catch (e) {}
+      })
+    );
+    clips.forEach((clip) => {
+      clip.hlsUrl = hlsMap[clip.videoId] || null;
+    });
+
     res.json({ clips });
   } catch (err) {
     next(err);

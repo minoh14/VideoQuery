@@ -266,16 +266,85 @@ function renderSearchResults(clips) {
 
   resultsArea.innerHTML = clips
     .map(
-      (clip) => `
-    <div class="clip-card" data-video-id="${clip.videoId}" data-start="${clip.start}">
+      (clip, i) => {
+        const thumbSrc = clip.thumbnailUrl
+          ? `${clip.thumbnailUrl}${clip.thumbnailUrl.includes('?') ? '&' : '?'}time=${clip.start || 0}`
+          : '';
+        return `
+    <div class="clip-card" data-index="${i}">
       <div class="clip-info">
-        <span class="clip-title">${escapeHtml(clip.videoTitle || clip.videoId)}</span>
-        <span class="clip-time">${formatTime(clip.start)} – ${formatTime(clip.end)}</span>
+        <div class="clip-thumbnail">
+          ${thumbSrc ? `<img src="${thumbSrc}" alt="thumbnail">` : '<div class="clip-thumbnail-placeholder"></div>'}
+          <div class="clip-play-icon">&#9654;</div>
+        </div>
+        <div class="clip-meta">
+          <span class="clip-title">${escapeHtml(clip.videoTitle || clip.videoId)}</span>
+          <span class="clip-time">${formatTime(clip.start)} – ${formatTime(clip.end)}</span>
+          ${clip.transcription ? `<p class="clip-transcription">${escapeHtml(clip.transcription)}</p>` : ''}
+        </div>
       </div>
-      ${clip.transcription ? `<p style="font-size:0.8rem;color:#a1a1aa">${escapeHtml(clip.transcription)}</p>` : ''}
-    </div>`
+      <div class="clip-player-container" id="player-${i}"></div>
+    </div>`;
+      }
     )
     .join('');
+
+  resultsArea.querySelectorAll('.clip-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      const idx = parseInt(card.dataset.index);
+      const clip = clips[idx];
+      playClip(idx, clip);
+    });
+  });
+}
+
+function playClip(index, clip) {
+  const container = document.getElementById(`player-${index}`);
+  if (container.querySelector('video')) {
+    container.innerHTML = '';
+    return;
+  }
+
+  if (!clip.hlsUrl) {
+    container.innerHTML = '<p style="color:#6b7280;font-size:0.8rem;padding:8px">재생 가능한 스트림이 없습니다.</p>';
+    return;
+  }
+
+  const video = document.createElement('video');
+  video.controls = true;
+  video.autoplay = true;
+  video.style.width = '100%';
+  video.style.borderRadius = '6px';
+  video.style.marginTop = '10px';
+  container.innerHTML = '';
+  container.appendChild(video);
+
+  const startTime = clip.start || 0;
+  const endTime = clip.end;
+
+  function onTimeUpdate() {
+    if (endTime != null && video.currentTime >= endTime) {
+      video.pause();
+      video.removeEventListener('timeupdate', onTimeUpdate);
+    }
+  }
+  video.addEventListener('timeupdate', onTimeUpdate);
+
+  if (Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(clip.hlsUrl);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.currentTime = startTime;
+      video.play();
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = clip.hlsUrl;
+    video.addEventListener('loadedmetadata', () => {
+      video.currentTime = startTime;
+      video.play();
+    });
+  }
 }
 
 function renderAnalyzeResult(text) {
