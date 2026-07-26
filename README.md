@@ -96,6 +96,31 @@ TwelveLabs 플랫폼. Python 또는 Node.js SDK, 혹은 REST API(`https://api.tw
 
 **프로젝트 ↔ 인덱스 매핑**: 앱의 "프로젝트" 1개 = TwelveLabs 인덱스 1개. 사용자는 항상 하나의 활성 프로젝트를 선택한 상태로 업로드/검색/분석한다.
 
+### 4.1 프로젝트 디렉토리 구조
+
+```
+VideoQuery/
+├── .env.example              # 환경변수 템플릿 (TWELVELABS_API_KEY, PORT)
+├── .gitignore
+├── package.json
+├── server.js                 # Express 진입점, 미들웨어, 정적 파일 서빙, 에러 핸들링
+├── lib/
+│   └── twelvelabs-client.js  # TwelvelabsApiClient 싱글턴 인스턴스
+├── routes/
+│   ├── projects.js           # POST /api/projects, GET /api/projects
+│   ├── videos.js             # POST/GET/DELETE /api/videos, GET /api/videos/:id/status
+│   ├── search.js             # POST /api/search
+│   └── analyze.js            # POST /api/analyze
+└── public/                   # 프론트엔드 (정적 파일, Express가 서빙)
+    ├── index.html            # SPA 진입점 (프로젝트 목록 / 워크스페이스 뷰)
+    ├── style.css             # 다크 테마 UI 스타일
+    └── app.js                # 클라이언트 로직 (API 호출, 라우팅, 폴링)
+```
+
+- **런타임**: Node.js + Express (Vanilla JavaScript, CommonJS)
+- **SDK**: `twelvelabs-js` (TwelvelabsApiClient)
+- **DB 없음**: 모든 상태는 TwelveLabs API 실시간 조회
+
 ---
 
 ## 5. 데이터 모델

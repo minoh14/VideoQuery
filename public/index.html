@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VideoQuery</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- 화면 1: 프로젝트 목록 -->
+  <section id="projects-view" class="view active">
+    <header class="top-bar">
+      <h1>VideoQuery</h1>
+      <button id="btn-new-project" class="btn btn-primary">+ 새 프로젝트</button>
+    </header>
+    <div id="projects-grid" class="projects-grid"></div>
+  </section>
+
+  <!-- 화면 2: 워크스페이스 -->
+  <section id="workspace-view" class="view">
+    <header class="top-bar">
+      <button id="btn-back" class="btn btn-ghost">&larr; 프로젝트 목록</button>
+      <h2 id="workspace-title"></h2>
+      <button id="btn-add-video" class="btn btn-primary">+ URL로 영상 추가</button>
+    </header>
+    <div class="workspace-layout">
+      <aside id="video-sidebar" class="sidebar">
+        <h3>영상 목록</h3>
+        <ul id="video-list"></ul>
+      </aside>
+      <main class="main-content">
+        <div class="query-bar">
+          <div class="query-toggle">
+            <button id="mode-search" class="toggle-btn active">검색</button>
+            <button id="mode-analyze" class="toggle-btn">분석</button>
+          </div>
+          <input type="text" id="query-input" placeholder="자연어로 질의하세요...">
+          <button id="btn-query" class="btn btn-primary">실행</button>
+        </div>
+        <div id="results-area" class="results-area">
+          <p class="placeholder-text">검색 또는 분석 결과가 여기에 표시됩니다.</p>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 모달: 새 프로젝트 -->
+  <div id="modal-new-project" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>새 프로젝트 생성</h3>
+      <input type="text" id="input-project-name" placeholder="프로젝트 이름">
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel">취소</button>
+        <button id="btn-create-project" class="btn btn-primary">생성</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 모달: URL로 영상 추가 -->
+  <div id="modal-add-video" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>URL로 영상 추가</h3>
+      <input type="text" id="input-video-url" placeholder="공개 영상 URL">
+      <input type="text" id="input-video-title" placeholder="제목 (선택)">
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel">취소</button>
+        <button id="btn-upload-video" class="btn btn-primary">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 모달: 삭제 확인 -->
+  <div id="modal-delete" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>영상 삭제</h3>
+      <p>이 영상을 삭제하시겠습니까? 되돌릴 수 없습니다.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel">취소</button>
+        <button id="btn-confirm-delete" class="btn btn-danger">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
