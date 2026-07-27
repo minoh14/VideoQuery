@@ -147,10 +147,14 @@ function renderVideos(videos, totalResults) {
     .map((v) => {
       const badge = getBadge(v.status);
       const isProcessing = v.status !== 'ready' && v.status !== 'failed';
+      const thumb = v.thumbnailUrl
+        ? `<img class="video-item-thumb" src="${v.thumbnailUrl}" alt="">`
+        : '<div class="video-item-thumb video-item-thumb-empty"></div>';
       return `
       <li data-id="${v.id}" data-asset-id="${v.assetId || ''}">
         <div class="video-item-content">
           <div class="video-item-row">
+            ${thumb}
             <span class="video-name">${escapeHtml(v.filename || '제목 없음')}</span>
             <span class="badge ${badge.cls}">${badge.label}</span>
             <button class="btn-delete-video" data-id="${v.id}" title="삭제">&times;</button>
@@ -181,6 +185,13 @@ function renderVideos(videos, totalResults) {
     });
   });
 
+  videoList.querySelectorAll('li[data-id]').forEach((li) => {
+    li.addEventListener('click', () => {
+      const video = videos.find((v) => v.id === li.dataset.id);
+      if (video) showVideoPreview(video);
+    });
+  });
+
   const prevBtn = document.getElementById('btn-prev-page');
   const nextBtn = document.getElementById('btn-next-page');
   if (prevBtn) {
@@ -193,6 +204,56 @@ function renderVideos(videos, totalResults) {
       if (videoPage < videoTotalPage) { videoPage++; loadVideos(); }
     });
   }
+}
+
+function showVideoPreview(video) {
+  const modal = document.getElementById('modal-video-preview');
+  const title = document.getElementById('modal-video-title');
+  const body = document.getElementById('modal-video-body');
+
+  title.textContent = video.filename || '제목 없음';
+
+  const thumbSrc = video.thumbnailUrl || '';
+  body.innerHTML = `
+    <div class="video-preview-thumbnail" id="video-preview-player">
+      ${thumbSrc ? `<img src="${thumbSrc}" alt="thumbnail">` : '<div class="clip-thumbnail-placeholder" style="height:300px"></div>'}
+      <div class="clip-play-icon">&#9654;</div>
+    </div>`;
+
+  modal.classList.remove('hidden');
+
+  document.getElementById('video-preview-player').addEventListener('click', () => {
+    if (!video.hlsUrl) {
+      body.innerHTML = '<p style="color:#6b7280;font-size:0.85rem;padding:16px">재생 가능한 스트림이 없습니다.</p>';
+      return;
+    }
+    const container = document.getElementById('video-preview-player');
+    const videoEl = document.createElement('video');
+    videoEl.controls = true;
+    videoEl.autoplay = true;
+    videoEl.style.width = '100%';
+    videoEl.style.borderRadius = '8px';
+    container.innerHTML = '';
+    container.appendChild(videoEl);
+
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(video.hlsUrl);
+      hls.attachMedia(videoEl);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => videoEl.play());
+    } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+      videoEl.src = video.hlsUrl;
+      videoEl.addEventListener('loadedmetadata', () => videoEl.play());
+    }
+  });
+}
+
+function closeVideoPreview() {
+  const modal = document.getElementById('modal-video-preview');
+  const body = document.getElementById('modal-video-body');
+  body.querySelectorAll('video').forEach((v) => { v.pause(); v.src = ''; });
+  body.innerHTML = '';
+  modal.classList.add('hidden');
 }
 
 function getBadge(status) {
@@ -561,6 +622,10 @@ document.getElementById('btn-back').addEventListener('click', goToProjects);
 document.getElementById('btn-add-video').addEventListener('click', () => openModal('modal-add-video'));
 document.getElementById('btn-upload-video').addEventListener('click', uploadVideo);
 document.getElementById('btn-confirm-delete').addEventListener('click', deleteVideo);
+document.getElementById('btn-close-video-preview').addEventListener('click', closeVideoPreview);
+document.getElementById('modal-video-preview').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeVideoPreview();
+});
 document.getElementById('btn-query').addEventListener('click', executeQuery);
 
 // Upload tabs

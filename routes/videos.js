@@ -114,6 +114,8 @@ router.get('/', async (req, res, next) => {
       duration: item.systemMetadata?.duration || null,
       status: item.status,
       createdAt: item.createdAt,
+      hlsUrl: item.hls?.video_url || null,
+      thumbnailUrl: item.hls?.thumbnail_urls?.[0] || null,
     }));
 
     const pi = result.response?.pageInfo || {};
