@@ -6,6 +6,7 @@ let queryMode = 'search';
 let deleteTarget = null;
 let pollInterval = null;
 let queryController = null;
+let pendingUploads = [];
 
 // DOM refs
 const projectsView = document.getElementById('projects-view');
@@ -114,12 +115,28 @@ async function loadVideos() {
 }
 
 function renderVideos(videos) {
-  if (!videos.length) {
+  const videoAssetIds = new Set(videos.map((v) => v.assetId).filter(Boolean));
+  pendingUploads = pendingUploads.filter((p) => !videoAssetIds.has(p.assetId));
+
+  const pendingHtml = pendingUploads
+    .map((p) => `
+      <li class="pending-upload">
+        <div class="video-item-content">
+          <div class="video-item-row">
+            <span class="video-name">${escapeHtml(p.title)}</span>
+            <span class="badge badge-uploading">업로드 중</span>
+          </div>
+          <div class="progress-bar"><div class="progress-bar-fill"></div></div>
+        </div>
+      </li>`)
+    .join('');
+
+  if (!videos.length && !pendingUploads.length) {
     videoList.innerHTML = '<li style="color:#6b7280">영상이 없습니다.</li>';
     return;
   }
 
-  videoList.innerHTML = videos
+  const videosHtml = videos
     .map((v) => {
       const badge = getBadge(v.status);
       const isProcessing = v.status !== 'ready' && v.status !== 'failed';
@@ -136,6 +153,8 @@ function renderVideos(videos) {
       </li>`;
     })
     .join('');
+
+  videoList.innerHTML = pendingHtml + videosHtml;
 
   videoList.querySelectorAll('.btn-delete-video').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -170,6 +189,15 @@ async function uploadVideo() {
   const btn = document.getElementById('btn-upload-video');
   btn.disabled = true;
 
+  const title = titleInput.value.trim() || url.split('/').pop() || '새 영상';
+  const pending = { title, assetId: null };
+  pendingUploads.push(pending);
+
+  urlInput.value = '';
+  titleInput.value = '';
+  closeModals();
+  loadVideos();
+
   try {
     const res = await fetch(`${API}/api/videos`, {
       method: 'POST',
@@ -177,15 +205,16 @@ async function uploadVideo() {
       body: JSON.stringify({
         indexId: currentProject.id,
         url,
-        title: titleInput.value.trim() || undefined,
+        title: title,
       }),
     });
     if (!res.ok) throw new Error('업로드 실패');
-    urlInput.value = '';
-    titleInput.value = '';
-    closeModals();
+    const data = await res.json();
+    pending.assetId = data.assetId;
     loadVideos();
   } catch (err) {
+    pendingUploads = pendingUploads.filter((p) => p !== pending);
+    loadVideos();
     alert('영상 추가에 실패했습니다.');
   } finally {
     btn.disabled = false;
