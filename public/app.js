@@ -119,11 +119,11 @@ async function loadVideos() {
 }
 
 function renderVideos(videos, totalResults) {
-  const totalCount = totalResults + pendingUploads.length;
-  document.getElementById('video-count').textContent = totalCount > 0 ? `(${totalCount})` : '';
-
   const videoAssetIds = new Set(videos.map((v) => v.assetId).filter(Boolean));
   pendingUploads = pendingUploads.filter((p) => !videoAssetIds.has(p.assetId));
+
+  const totalCount = totalResults + pendingUploads.length;
+  document.getElementById('video-count').textContent = totalCount > 0 ? `(${totalCount})` : '';
 
   const pendingHtml = pendingUploads
     .map((p) => `
