@@ -439,6 +439,41 @@ function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+// --- Sidebar Resize ---
+
+(function initSidebarResize() {
+  const resizer = document.getElementById('sidebar-resizer');
+  const sidebar = document.getElementById('video-sidebar');
+  if (!resizer || !sidebar) return;
+
+  let startX, startWidth;
+
+  resizer.addEventListener('mousedown', (e) => {
+    startX = e.clientX;
+    startWidth = sidebar.offsetWidth;
+    resizer.classList.add('active');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    function onMouseMove(e) {
+      const newWidth = startWidth + (e.clientX - startX);
+      const clamped = Math.max(180, Math.min(newWidth, window.innerWidth * 0.5));
+      sidebar.style.width = clamped + 'px';
+    }
+
+    function onMouseUp() {
+      resizer.classList.remove('active');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+})();
+
 // --- Event Listeners ---
 
 document.getElementById('btn-new-project').addEventListener('click', () => openModal('modal-new-project'));
