@@ -180,7 +180,17 @@ function getBadge(status) {
   }
 }
 
+let uploadMode = 'url';
+
 async function uploadVideo() {
+  if (uploadMode === 'url') {
+    await uploadVideoByUrl();
+  } else {
+    await uploadVideoByFile();
+  }
+}
+
+async function uploadVideoByUrl() {
   const urlInput = document.getElementById('input-video-url');
   const titleInput = document.getElementById('input-video-title');
   const url = urlInput.value.trim();
@@ -216,6 +226,45 @@ async function uploadVideo() {
     pendingUploads = pendingUploads.filter((p) => p !== pending);
     loadVideos();
     alert('영상 추가에 실패했습니다.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function uploadVideoByFile() {
+  const fileInput = document.getElementById('input-video-file');
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const btn = document.getElementById('btn-upload-video');
+  btn.disabled = true;
+
+  const title = file.name;
+  const pending = { title, assetId: null };
+  pendingUploads.push(pending);
+
+  fileInput.value = '';
+  document.getElementById('file-drop-name').textContent = '';
+  closeModals();
+  loadVideos();
+
+  try {
+    const formData = new FormData();
+    formData.append('indexId', currentProject.id);
+    formData.append('file', file);
+
+    const res = await fetch(`${API}/api/videos/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('업로드 실패');
+    const data = await res.json();
+    pending.assetId = data.assetId;
+    loadVideos();
+  } catch (err) {
+    pendingUploads = pendingUploads.filter((p) => p !== pending);
+    loadVideos();
+    alert('파일 업로드에 실패했습니다.');
   } finally {
     btn.disabled = false;
   }
@@ -483,6 +532,51 @@ document.getElementById('btn-add-video').addEventListener('click', () => openMod
 document.getElementById('btn-upload-video').addEventListener('click', uploadVideo);
 document.getElementById('btn-confirm-delete').addEventListener('click', deleteVideo);
 document.getElementById('btn-query').addEventListener('click', executeQuery);
+
+// Upload tabs
+document.getElementById('tab-url').addEventListener('click', () => {
+  uploadMode = 'url';
+  document.getElementById('tab-url').classList.add('active');
+  document.getElementById('tab-file').classList.remove('active');
+  document.getElementById('upload-panel-url').classList.remove('hidden');
+  document.getElementById('upload-panel-file').classList.add('hidden');
+});
+
+document.getElementById('tab-file').addEventListener('click', () => {
+  uploadMode = 'file';
+  document.getElementById('tab-file').classList.add('active');
+  document.getElementById('tab-url').classList.remove('active');
+  document.getElementById('upload-panel-file').classList.remove('hidden');
+  document.getElementById('upload-panel-url').classList.add('hidden');
+});
+
+// File input display
+document.getElementById('input-video-file').addEventListener('change', (e) => {
+  const name = e.target.files[0]?.name || '';
+  document.getElementById('file-drop-name').textContent = name;
+});
+
+// Drag and drop
+const dropArea = document.getElementById('file-drop-area');
+dropArea.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropArea.classList.add('dragover');
+});
+dropArea.addEventListener('dragleave', () => {
+  dropArea.classList.remove('dragover');
+});
+dropArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropArea.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const fileInput = document.getElementById('input-video-file');
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    document.getElementById('file-drop-name').textContent = file.name;
+  }
+});
 
 document.getElementById('mode-search').addEventListener('click', () => {
   queryMode = 'search';

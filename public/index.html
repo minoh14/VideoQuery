@@ -21,7 +21,7 @@
     <header class="top-bar">
       <button id="btn-back" class="btn btn-ghost">&larr; 프로젝트 목록</button>
       <h2 id="workspace-title"></h2>
-      <button id="btn-add-video" class="btn btn-primary">+ URL로 영상 추가</button>
+      <button id="btn-add-video" class="btn btn-primary">+ 영상 추가</button>
     </header>
     <div class="workspace-layout">
       <aside id="video-sidebar" class="sidebar">
@@ -57,12 +57,25 @@
     </div>
   </div>
 
-  <!-- 모달: URL로 영상 추가 -->
+  <!-- 모달: 영상 추가 -->
   <div id="modal-add-video" class="modal-overlay hidden">
     <div class="modal">
-      <h3>URL로 영상 추가</h3>
-      <input type="text" id="input-video-url" placeholder="공개 영상 URL">
-      <input type="text" id="input-video-title" placeholder="제목 (선택)">
+      <h3>영상 추가</h3>
+      <div class="upload-tabs">
+        <button id="tab-url" class="upload-tab active">URL</button>
+        <button id="tab-file" class="upload-tab">파일</button>
+      </div>
+      <div id="upload-panel-url" class="upload-panel">
+        <input type="text" id="input-video-url" placeholder="공개 영상 URL">
+        <input type="text" id="input-video-title" placeholder="제목 (선택)">
+      </div>
+      <div id="upload-panel-file" class="upload-panel hidden">
+        <label class="file-drop-area" id="file-drop-area">
+          <input type="file" id="input-video-file" accept="video/*,audio/*">
+          <span class="file-drop-text">클릭하거나 파일을 드래그하세요</span>
+          <span class="file-drop-name" id="file-drop-name"></span>
+        </label>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-ghost modal-cancel">취소</button>
         <button id="btn-upload-video" class="btn btn-primary">추가</button>

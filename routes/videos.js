@@ -1,7 +1,9 @@
 const { Router } = require('express');
+const multer = require('multer');
 const client = require('../lib/twelvelabs-client');
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 
 function waitForAssetReady(assetId, maxAttempts = 60) {
   return new Promise((resolve, reject) => {
@@ -33,6 +35,40 @@ router.post('/', async (req, res, next) => {
       method: 'url',
       url,
       filename: title || undefined,
+      enableHls: true,
+      enableThumbnail: true,
+    });
+
+    res.status(202).json({
+      assetId: asset.id,
+      status: 'processing',
+    });
+
+    waitForAssetReady(asset.id)
+      .then(() =>
+        client.indexes.indexedAssets.create(indexId, {
+          assetId: asset.id,
+          enableVideoStream: true,
+        })
+      )
+      .catch(() => {});
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/upload', upload.single('file'), async (req, res, next) => {
+  try {
+    const { indexId } = req.body;
+    if (!indexId || !req.file) {
+      return res.status(400).json({ error: 'indexId and file are required' });
+    }
+
+    const blob = new Blob([req.file.buffer], { type: req.file.mimetype });
+    const asset = await client.assets.create({
+      method: 'direct',
+      file: blob,
+      filename: req.file.originalname || undefined,
       enableHls: true,
       enableThumbnail: true,
     });
