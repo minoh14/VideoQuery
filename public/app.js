@@ -144,7 +144,7 @@ function renderVideos(videos) {
       <li data-id="${v.id}" data-asset-id="${v.assetId || ''}">
         <div class="video-item-content">
           <div class="video-item-row">
-            <span class="video-name">${escapeHtml(v.name || '제목 없음')}</span>
+            <span class="video-name">${escapeHtml(v.filename || '제목 없음')}</span>
             <span class="badge ${badge.cls}">${badge.label}</span>
             <button class="btn-delete-video" data-id="${v.id}" title="삭제">&times;</button>
           </div>

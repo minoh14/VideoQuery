@@ -66,12 +66,10 @@ router.get('/', async (req, res, next) => {
     const videos = (result.data || []).map((item) => ({
       id: item.id,
       assetId: item.assetId,
-      name: item.filename,
-      duration: item.duration,
+      filename: item.systemMetadata?.filename || null,
+      duration: item.systemMetadata?.duration || null,
       status: item.status,
       createdAt: item.createdAt,
-      hls: item.hls,
-      thumbnailUrl: item.thumbnailUrl,
     }));
 
     res.json(videos);
