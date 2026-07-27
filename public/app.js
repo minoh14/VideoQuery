@@ -7,6 +7,8 @@ let deleteTarget = null;
 let pollInterval = null;
 let queryController = null;
 let pendingUploads = [];
+let videoPage = 1;
+let videoTotalPage = 1;
 
 // DOM refs
 const projectsView = document.getElementById('projects-view');
@@ -33,6 +35,7 @@ function goToProjects() {
 
 function goToWorkspace(project) {
   currentProject = project;
+  videoPage = 1;
   workspaceTitle.textContent = project.name;
   resultsArea.innerHTML = '<p class="placeholder-text">검색 또는 분석 결과가 여기에 표시됩니다.</p>';
   showView(workspaceView);
@@ -106,15 +109,19 @@ async function loadVideos() {
   if (!currentProject) return;
 
   try {
-    const res = await fetch(`${API}/api/videos?indexId=${currentProject.id}`);
-    const videos = await res.json();
-    renderVideos(videos);
+    const res = await fetch(`${API}/api/videos?indexId=${currentProject.id}&page=${videoPage}&pageLimit=10`);
+    const data = await res.json();
+    videoTotalPage = data.pageInfo?.totalPage || 1;
+    renderVideos(data.videos, data.pageInfo?.totalResults || data.videos.length);
   } catch (err) {
     videoList.innerHTML = '<li>영상 목록을 불러오지 못했습니다.</li>';
   }
 }
 
-function renderVideos(videos) {
+function renderVideos(videos, totalResults) {
+  const totalCount = totalResults + pendingUploads.length;
+  document.getElementById('video-count').textContent = totalCount > 0 ? `(${totalCount})` : '';
+
   const videoAssetIds = new Set(videos.map((v) => v.assetId).filter(Boolean));
   pendingUploads = pendingUploads.filter((p) => !videoAssetIds.has(p.assetId));
 
@@ -156,6 +163,16 @@ function renderVideos(videos) {
 
   videoList.innerHTML = pendingHtml + videosHtml;
 
+  const paginationEl = document.getElementById('video-pagination');
+  if (videoTotalPage > 1) {
+    paginationEl.innerHTML = `
+      <button class="btn-page${videoPage <= 1 ? ' disabled' : ''}" id="btn-prev-page">&lsaquo;</button>
+      <span class="page-info">${videoPage} / ${videoTotalPage}</span>
+      <button class="btn-page${videoPage >= videoTotalPage ? ' disabled' : ''}" id="btn-next-page">&rsaquo;</button>`;
+  } else {
+    paginationEl.innerHTML = '';
+  }
+
   videoList.querySelectorAll('.btn-delete-video').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -163,6 +180,19 @@ function renderVideos(videos) {
       openModal('modal-delete');
     });
   });
+
+  const prevBtn = document.getElementById('btn-prev-page');
+  const nextBtn = document.getElementById('btn-next-page');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      if (videoPage > 1) { videoPage--; loadVideos(); }
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      if (videoPage < videoTotalPage) { videoPage++; loadVideos(); }
+    });
+  }
 }
 
 function getBadge(status) {

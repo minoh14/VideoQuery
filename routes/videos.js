@@ -93,13 +93,21 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const { indexId } = req.query;
+    const { indexId, page = '1', pageLimit = '10' } = req.query;
     if (!indexId) {
       return res.status(400).json({ error: 'indexId query parameter is required' });
     }
 
-    const result = await client.indexes.indexedAssets.list(indexId);
-    const videos = (result.data || []).map((item) => ({
+    const pageNum = Math.max(1, parseInt(page));
+    const limit = Math.min(10, Math.max(1, parseInt(pageLimit)));
+
+    const result = await client.indexes.indexedAssets.list(indexId, {
+      page: pageNum,
+      pageLimit: limit,
+    });
+
+    const rawData = result.data || [];
+    const videos = rawData.map((item) => ({
       id: item.id,
       assetId: item.assetId,
       filename: item.systemMetadata?.filename || null,
@@ -108,7 +116,19 @@ router.get('/', async (req, res, next) => {
       createdAt: item.createdAt,
     }));
 
-    res.json(videos);
+    const pi = result.response?.pageInfo || {};
+    const totalResults = pi.totalResults || videos.length;
+    const totalPage = pi.totalPage || Math.ceil(totalResults / limit) || 1;
+
+    res.json({
+      videos,
+      pageInfo: {
+        page: pageNum,
+        pageLimit: limit,
+        totalPage,
+        totalResults,
+      },
+    });
   } catch (err) {
     next(err);
   }
