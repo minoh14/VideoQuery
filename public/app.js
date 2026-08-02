@@ -133,7 +133,9 @@ function renderVideos(videos, totalResults) {
   pendingUploads = pendingUploads.filter((p) => !videoAssetIds.has(p.assetId));
 
   const totalCount = totalResults + pendingUploads.length;
-  document.getElementById('video-count').textContent = totalCount > 0 ? `(${totalCount})` : '';
+  const totalDuration = currentProject ? (currentProject.totalDuration || 0) : 0;
+  const durationText = totalDuration > 0 ? ` (${formatDuration(totalDuration)})` : '';
+  document.getElementById('video-count').textContent = totalCount > 0 ? `(${totalCount})${durationText}` : '';
 
   const pendingHtml = pendingUploads
     .map((p) => `
@@ -160,12 +162,14 @@ function renderVideos(videos, totalResults) {
       const thumb = v.thumbnailUrl
         ? `<img class="video-item-thumb" src="${v.thumbnailUrl}" alt="">`
         : '<div class="video-item-thumb video-item-thumb-empty"></div>';
+      const durationStr = v.duration ? formatDuration(v.duration) : '';
       return `
       <li data-id="${v.id}" data-asset-id="${v.assetId || ''}">
         <div class="video-item-content">
           <div class="video-item-row">
             ${thumb}
             <span class="video-name">${escapeHtml(v.filename || '제목 없음')}</span>
+            ${durationStr ? `<span class="video-duration">${durationStr}</span>` : ''}
             <span class="badge ${badge.cls}">${badge.label}</span>
             <button class="btn-delete-video" data-id="${v.id}" title="삭제">&times;</button>
           </div>
@@ -477,6 +481,7 @@ function updateAnalyzeIndicator() {
   }
   const hasSelection = !!selectedAnalyzeVideo;
   analyzeInput.disabled = !hasSelection;
+  analyzeInput.placeholder = hasSelection ? '영상에 대해 질문하세요...' : '사이드바에서 영상을 선택하세요...';
   document.getElementById('btn-analyze').disabled = !hasSelection;
 }
 
@@ -642,6 +647,14 @@ function formatTime(seconds) {
   if (seconds == null) return '--:--';
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function formatDuration(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 

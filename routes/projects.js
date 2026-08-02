@@ -37,6 +37,7 @@ router.get('/', async (req, res, next) => {
       id: index.id,
       name: index.indexName,
       videoCount: index.videoCount,
+      totalDuration: index.totalDuration || 0,
       createdAt: index.createdAt,
       updatedAt: index.updatedAt,
     }));

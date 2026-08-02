@@ -240,6 +240,12 @@ body {
   }
 }
 
+.video-duration {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
 #video-list li .badge {
   font-size: 0.7rem;
   padding: 2px 6px;
