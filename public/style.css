@@ -936,6 +936,46 @@ body {
   border-bottom-left-radius: 4px;
 }
 
+.chat-bubble.markdown-body {
+  white-space: normal;
+}
+
+.markdown-body p {
+  margin: 0 0 8px;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body ul {
+  margin: 4px 0 8px;
+  padding-left: 20px;
+}
+
+.markdown-body li {
+  margin-bottom: 2px;
+}
+
+.markdown-body h3, .markdown-body h4, .markdown-body h5 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+
+.markdown-body code {
+  background: var(--bg-hover);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.82rem;
+}
+
+.markdown-body br {
+  display: block;
+  content: '';
+  margin: 4px 0;
+}
+
 .typing-dots {
   display: inline-flex;
   gap: 2px;

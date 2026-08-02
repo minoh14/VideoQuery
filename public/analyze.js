@@ -119,12 +119,62 @@ function buildPrompt() {
   return lines.join('\n');
 }
 
+function renderMarkdown(text) {
+  const escaped = escapeHtml(text);
+  const lines = escaped.split('\n');
+  const result = [];
+  let inList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      const level = headingMatch[1].length;
+      result.push(`<h${level + 2}>${headingMatch[2]}</h${level + 2}>`);
+      continue;
+    }
+
+    const listMatch = line.match(/^[\-\*]\s+(.+)$/);
+    if (listMatch) {
+      if (!inList) { result.push('<ul>'); inList = true; }
+      result.push(`<li>${applyInline(listMatch[1])}</li>`);
+      continue;
+    }
+
+    const numListMatch = line.match(/^\d+\.\s+(.+)$/);
+    if (numListMatch) {
+      if (!inList) { result.push('<ul>'); inList = true; }
+      result.push(`<li>${applyInline(numListMatch[1])}</li>`);
+      continue;
+    }
+
+    if (inList) { result.push('</ul>'); inList = false; }
+
+    if (line.trim() === '') {
+      result.push('<br>');
+    } else {
+      result.push(`<p>${applyInline(line)}</p>`);
+    }
+  }
+  if (inList) result.push('</ul>');
+  return result.join('');
+}
+
+function applyInline(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>');
+}
+
 function renderChat() {
   const messages = chatHistory.map((msg) => {
     if (msg.role === 'user') {
       return `<div class="chat-message chat-user"><div class="chat-bubble chat-bubble-user">${escapeHtml(msg.content)}</div></div>`;
     }
-    return `<div class="chat-message chat-assistant"><div class="chat-bubble chat-bubble-assistant">${escapeHtml(msg.content)}</div></div>`;
+    return `<div class="chat-message chat-assistant"><div class="chat-bubble chat-bubble-assistant markdown-body">${renderMarkdown(msg.content)}</div></div>`;
   });
 
   const lastMsg = chatHistory[chatHistory.length - 1];
