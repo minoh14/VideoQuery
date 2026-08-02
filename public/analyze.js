@@ -4,9 +4,19 @@ import { escapeHtml, formatDuration } from './utils.js';
 const analyzeInput = document.getElementById('analyze-input');
 const analyzeResults = document.getElementById('analyze-results');
 
+let chatHistory = [];
+
 export function selectVideoForAnalysis(video) {
+  if (state.selectedAnalyzeVideo && state.selectedAnalyzeVideo.id !== video.id) {
+    resetChat();
+  }
   state.selectedAnalyzeVideo = video;
   updateAnalyzeIndicator();
+}
+
+export function resetChat() {
+  chatHistory = [];
+  analyzeResults.innerHTML = '<p class="placeholder-text">사이드바에서 영상을 선택한 뒤 질문하세요.</p>';
 }
 
 export function updateAnalyzeIndicator() {
@@ -44,33 +54,61 @@ export async function executeAnalyze() {
   if (!query || !state.currentProject || !state.selectedAnalyzeVideo) return;
   const assetId = state.selectedAnalyzeVideo.assetId;
 
+  chatHistory.push({ role: 'user', content: query });
+  renderChat();
+  analyzeInput.value = '';
+
   if (state.analyzeController) state.analyzeController.abort();
   state.analyzeController = new AbortController();
   const signal = state.analyzeController.signal;
 
-  analyzeResults.innerHTML = '<div class="loading"><span class="spinner"></span>분석 중...</div>';
+  const prompt = buildPrompt();
 
   try {
     const res = await fetch(`${API}/api/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ assetId, prompt: query }),
+      body: JSON.stringify({ assetId, prompt }),
       signal,
     });
     if (!res.ok) throw new Error('분석 실패');
     const data = await res.json();
     if (signal.aborted) return;
-    renderAnalyzeResult(data.text);
+    const answer = (data.text || '').trim();
+    chatHistory.push({ role: 'assistant', content: answer || '분석 결과가 없습니다.' });
+    renderChat();
   } catch (err) {
     if (err.name === 'AbortError') return;
-    analyzeResults.innerHTML = `<p class="placeholder-text">오류: ${escapeHtml(err.message)}</p>`;
+    chatHistory.push({ role: 'assistant', content: `오류: ${err.message}` });
+    renderChat();
   }
 }
 
-function renderAnalyzeResult(text) {
-  if (!text) {
-    analyzeResults.innerHTML = '<p class="placeholder-text">분석 결과가 없습니다.</p>';
-    return;
+function buildPrompt() {
+  if (chatHistory.length <= 1) {
+    return chatHistory[chatHistory.length - 1].content;
   }
-  analyzeResults.innerHTML = `<div class="analyze-result">${escapeHtml(text.trim())}</div>`;
+  const lines = chatHistory.map((msg) => {
+    if (msg.role === 'user') return `User: ${msg.content}`;
+    return `Assistant: ${msg.content}`;
+  });
+  lines.push('Assistant:');
+  return lines.join('\n');
+}
+
+function renderChat() {
+  const messages = chatHistory.map((msg) => {
+    if (msg.role === 'user') {
+      return `<div class="chat-message chat-user"><div class="chat-bubble chat-bubble-user">${escapeHtml(msg.content)}</div></div>`;
+    }
+    return `<div class="chat-message chat-assistant"><div class="chat-bubble chat-bubble-assistant">${escapeHtml(msg.content)}</div></div>`;
+  });
+
+  const lastMsg = chatHistory[chatHistory.length - 1];
+  if (lastMsg && lastMsg.role === 'user') {
+    messages.push('<div class="chat-message chat-assistant"><div class="chat-bubble chat-bubble-assistant"><span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></div></div>');
+  }
+
+  analyzeResults.innerHTML = messages.join('');
+  analyzeResults.scrollTop = analyzeResults.scrollHeight;
 }
