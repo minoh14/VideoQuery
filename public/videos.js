@@ -75,9 +75,11 @@ function renderVideos(videos, totalResults) {
   const paginationEl = document.getElementById('video-pagination');
   if (state.videoTotalPage > 1) {
     paginationEl.innerHTML = `
+      <button class="btn-page${state.videoPage <= 1 ? ' disabled' : ''}" id="btn-first-page">&laquo;</button>
       <button class="btn-page${state.videoPage <= 1 ? ' disabled' : ''}" id="btn-prev-page">&lsaquo;</button>
       <span class="page-info">${state.videoPage} / ${state.videoTotalPage}</span>
-      <button class="btn-page${state.videoPage >= state.videoTotalPage ? ' disabled' : ''}" id="btn-next-page">&rsaquo;</button>`;
+      <button class="btn-page${state.videoPage >= state.videoTotalPage ? ' disabled' : ''}" id="btn-next-page">&rsaquo;</button>
+      <button class="btn-page${state.videoPage >= state.videoTotalPage ? ' disabled' : ''}" id="btn-last-page">&raquo;</button>`;
   } else {
     paginationEl.innerHTML = '';
   }
@@ -112,8 +114,15 @@ function renderVideos(videos, totalResults) {
     if (selectedLi) selectedLi.classList.add('selected');
   }
 
+  const firstBtn = document.getElementById('btn-first-page');
   const prevBtn = document.getElementById('btn-prev-page');
   const nextBtn = document.getElementById('btn-next-page');
+  const lastBtn = document.getElementById('btn-last-page');
+  if (firstBtn) {
+    firstBtn.addEventListener('click', () => {
+      if (state.videoPage > 1) { state.videoPage = 1; loadVideos(); }
+    });
+  }
   if (prevBtn) {
     prevBtn.addEventListener('click', () => {
       if (state.videoPage > 1) { state.videoPage--; loadVideos(); }
@@ -122,6 +131,11 @@ function renderVideos(videos, totalResults) {
   if (nextBtn) {
     nextBtn.addEventListener('click', () => {
       if (state.videoPage < state.videoTotalPage) { state.videoPage++; loadVideos(); }
+    });
+  }
+  if (lastBtn) {
+    lastBtn.addEventListener('click', () => {
+      if (state.videoPage < state.videoTotalPage) { state.videoPage = state.videoTotalPage; loadVideos(); }
     });
   }
 }
