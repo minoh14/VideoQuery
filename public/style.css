@@ -177,6 +177,12 @@ body {
   background: #f3f4f6;
 }
 
+#video-list li.selected {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  margin-bottom: 3px;
+}
+
 .video-item-content {
   width: 100%;
 }

@@ -201,12 +201,21 @@ function renderVideos(videos, totalResults) {
       if (!video) return;
       const analyzeActive = document.getElementById('panel-analyze').classList.contains('active');
       if (analyzeActive) {
-        if (video.status === 'ready') selectVideoForAnalysis(video);
+        if (video.status === 'ready') {
+          selectVideoForAnalysis(video);
+          videoList.querySelectorAll('li[data-id]').forEach((el) => el.classList.remove('selected'));
+          li.classList.add('selected');
+        }
       } else {
         showVideoPreview(video);
       }
     });
   });
+
+  if (document.getElementById('panel-analyze').classList.contains('active') && selectedAnalyzeVideo) {
+    const selectedLi = videoList.querySelector(`li[data-id="${selectedAnalyzeVideo.id}"]`);
+    if (selectedLi) selectedLi.classList.add('selected');
+  }
 
   const prevBtn = document.getElementById('btn-prev-page');
   const nextBtn = document.getElementById('btn-next-page');
