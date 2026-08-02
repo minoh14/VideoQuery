@@ -14,8 +14,14 @@ export function updateAnalyzeIndicator() {
   const nameEl = document.getElementById('analyze-video-name');
   if (state.selectedAnalyzeVideo && state.selectedAnalyzeVideo.thumbnailUrl) {
     thumbEl.innerHTML = `<img src="${state.selectedAnalyzeVideo.thumbnailUrl}" alt="">`;
+    thumbEl.style.cursor = 'pointer';
+    thumbEl.onclick = () => {
+      import('./videos.js').then(({ showVideoPreview }) => showVideoPreview(state.selectedAnalyzeVideo));
+    };
   } else {
     thumbEl.innerHTML = '<div class="analyze-thumb-placeholder"></div>';
+    thumbEl.style.cursor = '';
+    thumbEl.onclick = null;
   }
   if (state.selectedAnalyzeVideo) {
     const durationHtml = state.selectedAnalyzeVideo.duration

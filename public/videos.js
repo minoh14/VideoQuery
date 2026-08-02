@@ -133,7 +133,7 @@ function updateAnalyzeVideoSelect() {
   import('./analyze.js').then(({ updateAnalyzeIndicator }) => updateAnalyzeIndicator());
 }
 
-function showVideoPreview(video) {
+export function showVideoPreview(video) {
   const modal = document.getElementById('modal-video-preview');
   const title = document.getElementById('modal-video-title');
   const body = document.getElementById('modal-video-body');
