@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { openModal, closeModals } from './utils.js';
-import { loadProjects, createProject } from './projects.js';
+import { loadProjects, createProject, renameProject, deleteProject } from './projects.js';
 import { goToProjects } from './navigation.js';
 import { loadVideos, uploadVideo, deleteVideo, closeVideoPreview } from './videos.js';
 import { executeSearch } from './search.js';
@@ -45,6 +45,8 @@ import { executeAnalyze } from './analyze.js';
 
 document.getElementById('btn-new-project').addEventListener('click', () => openModal('modal-new-project'));
 document.getElementById('btn-create-project').addEventListener('click', createProject);
+document.getElementById('btn-rename-project').addEventListener('click', renameProject);
+document.getElementById('btn-confirm-delete-project').addEventListener('click', deleteProject);
 document.getElementById('btn-back').addEventListener('click', goToProjects);
 document.getElementById('btn-add-video').addEventListener('click', () => openModal('modal-add-video'));
 document.getElementById('btn-upload-video').addEventListener('click', uploadVideo);

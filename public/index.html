@@ -79,6 +79,30 @@
     </div>
   </div>
 
+  <!-- 모달: 프로젝트 이름 변경 -->
+  <div id="modal-rename-project" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>프로젝트 이름 변경</h3>
+      <input type="text" id="input-rename-project" placeholder="새 이름">
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel">취소</button>
+        <button id="btn-rename-project" class="btn btn-primary">변경</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 모달: 프로젝트 삭제 확인 -->
+  <div id="modal-delete-project" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>프로젝트 삭제</h3>
+      <p>이 프로젝트와 포함된 모든 영상이 삭제됩니다. 되돌릴 수 없습니다.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel">취소</button>
+        <button id="btn-confirm-delete-project" class="btn btn-danger">삭제</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 모달: 영상 추가 -->
   <div id="modal-add-video" class="modal-overlay hidden">
     <div class="modal">

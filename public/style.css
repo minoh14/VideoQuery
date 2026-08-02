@@ -113,6 +113,45 @@ body {
   color: #6b7280;
 }
 
+.project-card-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.project-card {
+  position: relative;
+}
+
+.project-card:hover .project-card-actions {
+  opacity: 1;
+}
+
+.btn-project-rename,
+.btn-project-delete {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.btn-project-rename:hover {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.btn-project-delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 /* Workspace Layout */
 .workspace-layout {
   display: flex;
