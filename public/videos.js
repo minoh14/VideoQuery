@@ -218,16 +218,20 @@ function getBadge(status) {
 
 export function startPolling() {
   stopPolling();
+  pollVideos();
   state.pollInterval = setInterval(pollVideos, 5000);
 }
 
 async function pollVideos() {
   await loadVideos();
-  await checkStatuses();
+  const hasProcessing = await checkStatuses();
+  if (!hasProcessing && !state.pendingUploads.length) {
+    stopPolling();
+  }
 }
 
 async function checkStatuses() {
-  if (!state.currentProject) return;
+  if (!state.currentProject) return false;
   try {
     const res = await apiFetch(`${API}/api/videos/statuses?indexId=${state.currentProject.id}`);
     const data = await res.json();
@@ -236,15 +240,20 @@ async function checkStatuses() {
     const allAssetIds = new Set(statuses.map((s) => s.assetId).filter(Boolean));
     state.pendingUploads = state.pendingUploads.filter((p) => !p.assetId || !allAssetIds.has(p.assetId));
 
+    let hasProcessing = false;
     for (const item of statuses) {
       const prev = state.allVideoStatuses[item.id];
       if (item.status === 'ready' && prev && prev !== 'ready') {
         showToast(`"${item.filename || '영상'}" 인덱싱 완료`);
       }
       state.allVideoStatuses[item.id] = item.status;
+      if (item.status !== 'ready' && item.status !== 'failed') {
+        hasProcessing = true;
+      }
     }
+    return hasProcessing;
   } catch (err) {
-    // silent
+    return false;
   }
 }
 
@@ -252,6 +261,12 @@ export function stopPolling() {
   if (state.pollInterval) {
     clearInterval(state.pollInterval);
     state.pollInterval = null;
+  }
+}
+
+export function ensurePolling() {
+  if (!state.pollInterval) {
+    startPolling();
   }
 }
 
@@ -295,6 +310,7 @@ async function uploadVideoByUrl() {
     const data = await res.json();
     pending.assetId = data.assetId;
     loadVideos();
+    ensurePolling();
   } catch (err) {
     state.pendingUploads = state.pendingUploads.filter((p) => p !== pending);
     loadVideos();
@@ -343,6 +359,7 @@ async function uploadVideoByFile() {
   }));
 
   loadVideos();
+  ensurePolling();
   btn.disabled = false;
 }
 
