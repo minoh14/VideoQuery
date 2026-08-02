@@ -679,9 +679,25 @@ body {
   margin-top: 10px;
 }
 
-.modal-video {
-  max-width: 720px;
-  width: 90vw;
+.modal.modal-video {
+  max-width: 80vw;
+  width: 80vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-video-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.modal-video-body video {
+  width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .modal-video-header {
