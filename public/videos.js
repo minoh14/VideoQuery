@@ -1,6 +1,7 @@
 import { API, state } from './state.js';
 import { escapeHtml, formatDuration, openModal, closeModals, showToast } from './utils.js';
 import { selectVideoForAnalysis } from './analyze.js';
+import { apiFetch } from './auth.js';
 
 const videoList = document.getElementById('video-list');
 
@@ -8,7 +9,7 @@ export async function loadVideos() {
   if (!state.currentProject) return;
 
   try {
-    const res = await fetch(`${API}/api/videos?indexId=${state.currentProject.id}&page=${state.videoPage}&pageLimit=10`);
+    const res = await apiFetch(`${API}/api/videos?indexId=${state.currentProject.id}&page=${state.videoPage}&pageLimit=10`);
     const data = await res.json();
     state.videoTotalPage = data.pageInfo?.totalPage || 1;
     renderVideos(data.videos, data.pageInfo?.totalResults || data.videos.length);
@@ -214,7 +215,7 @@ async function pollVideos() {
 async function checkStatuses() {
   if (!state.currentProject) return;
   try {
-    const res = await fetch(`${API}/api/videos/statuses?indexId=${state.currentProject.id}`);
+    const res = await apiFetch(`${API}/api/videos/statuses?indexId=${state.currentProject.id}`);
     const data = await res.json();
     const statuses = data.statuses || [];
 
@@ -267,7 +268,7 @@ async function uploadVideoByUrl() {
   loadVideos();
 
   try {
-    const res = await fetch(`${API}/api/videos`, {
+    const res = await apiFetch(`${API}/api/videos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -314,7 +315,7 @@ async function uploadVideoByFile() {
       formData.append('indexId', state.currentProject.id);
       formData.append('file', file);
 
-      const res = await fetch(`${API}/api/videos/upload`, {
+      const res = await apiFetch(`${API}/api/videos/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -338,7 +339,7 @@ export async function deleteVideo() {
   btn.disabled = true;
 
   try {
-    const res = await fetch(
+    const res = await apiFetch(
       `${API}/api/videos/${state.deleteTarget}?indexId=${state.currentProject.id}`,
       { method: 'DELETE' }
     );

@@ -1,5 +1,6 @@
 import { API, state } from './state.js';
 import { escapeHtml, openModal, closeModals } from './utils.js';
+import { apiFetch } from './auth.js';
 
 let projectActionTarget = null;
 
@@ -7,7 +8,7 @@ const projectsGrid = document.getElementById('projects-grid');
 
 export async function loadProjects() {
   try {
-    const res = await fetch(`${API}/api/projects`);
+    const res = await apiFetch(`${API}/api/projects`);
     const projects = await res.json();
     renderProjects(projects);
   } catch (err) {
@@ -73,7 +74,7 @@ export async function renameProject() {
   btn.disabled = true;
 
   try {
-    const res = await fetch(`${API}/api/projects/${projectActionTarget.id}`, {
+    const res = await apiFetch(`${API}/api/projects/${projectActionTarget.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
@@ -96,7 +97,7 @@ export async function deleteProject() {
   btn.disabled = true;
 
   try {
-    const res = await fetch(`${API}/api/projects/${projectActionTarget.id}`, {
+    const res = await apiFetch(`${API}/api/projects/${projectActionTarget.id}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('삭제 실패');
@@ -119,7 +120,7 @@ export async function createProject() {
   btn.disabled = true;
 
   try {
-    const res = await fetch(`${API}/api/projects`, {
+    const res = await apiFetch(`${API}/api/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),

@@ -1,6 +1,5 @@
 const { Router } = require('express');
 const multer = require('multer');
-const client = require('../lib/twelvelabs-client');
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -31,7 +30,7 @@ router.post('/', upload.single('image'), async (req, res, next) => {
       params.queryMediaFile = new Blob([req.file.buffer], { type: req.file.mimetype });
     }
 
-    const result = await client.search.create(params);
+    const result = await req.tlClient.search.create(params);
 
     const clips = (result.data || []).map((item) => ({
       videoId: item.videoId,
@@ -47,7 +46,7 @@ router.post('/', upload.single('image'), async (req, res, next) => {
     await Promise.all(
       videoIds.map(async (id) => {
         try {
-          const asset = await client.indexes.indexedAssets.retrieve(indexId, id);
+          const asset = await req.tlClient.indexes.indexedAssets.retrieve(indexId, id);
           assetMap[id] = { hlsUrl: asset.hls?.videoUrl || null, duration: asset.metadata?.duration || null };
         } catch (e) {}
       })

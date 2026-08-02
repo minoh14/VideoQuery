@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const client = require('../lib/twelvelabs-client');
 
 const router = Router();
 
@@ -24,7 +23,7 @@ router.post('/', async (req, res, next) => {
       params.video = { type: 'url', url };
     }
 
-    const result = await client.analyze(params);
+    const result = await req.tlClient.analyze(params);
 
     res.json({ text: result.data });
   } catch (err) {

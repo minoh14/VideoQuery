@@ -1,17 +1,16 @@
 const { Router } = require('express');
 const multer = require('multer');
-const client = require('../lib/twelvelabs-client');
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 
-function waitForAssetReady(assetId, maxAttempts = 60) {
+function waitForAssetReady(tlClient, assetId, maxAttempts = 60) {
   return new Promise((resolve, reject) => {
     let attempts = 0;
     const poll = async () => {
       attempts++;
       try {
-        const asset = await client.assets.retrieve(assetId);
+        const asset = await tlClient.assets.retrieve(assetId);
         if (asset.status === 'ready') return resolve(asset);
         if (asset.status === 'failed') return reject(new Error('Asset processing failed'));
         if (attempts >= maxAttempts) return reject(new Error('Asset processing timed out'));
@@ -31,7 +30,7 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'indexId and url are required' });
     }
 
-    const asset = await client.assets.create({
+    const asset = await req.tlClient.assets.create({
       method: 'url',
       url,
       filename: title || undefined,
@@ -44,9 +43,10 @@ router.post('/', async (req, res, next) => {
       status: 'processing',
     });
 
-    waitForAssetReady(asset.id)
+    const tlClient = req.tlClient;
+    waitForAssetReady(tlClient, asset.id)
       .then(() =>
-        client.indexes.indexedAssets.create(indexId, {
+        tlClient.indexes.indexedAssets.create(indexId, {
           assetId: asset.id,
           enableVideoStream: true,
         })
@@ -65,7 +65,7 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
     }
 
     const blob = new Blob([req.file.buffer], { type: req.file.mimetype });
-    const asset = await client.assets.create({
+    const asset = await req.tlClient.assets.create({
       method: 'direct',
       file: blob,
       filename: req.file.originalname || undefined,
@@ -78,9 +78,10 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
       status: 'processing',
     });
 
-    waitForAssetReady(asset.id)
+    const tlClient = req.tlClient;
+    waitForAssetReady(tlClient, asset.id)
       .then(() =>
-        client.indexes.indexedAssets.create(indexId, {
+        tlClient.indexes.indexedAssets.create(indexId, {
           assetId: asset.id,
           enableVideoStream: true,
         })
@@ -101,7 +102,7 @@ router.get('/', async (req, res, next) => {
     const pageNum = Math.max(1, parseInt(page));
     const limit = Math.min(10, Math.max(1, parseInt(pageLimit)));
 
-    const result = await client.indexes.indexedAssets.list(indexId, {
+    const result = await req.tlClient.indexes.indexedAssets.list(indexId, {
       page: pageNum,
       pageLimit: limit,
     });
@@ -146,7 +147,7 @@ router.get('/statuses', async (req, res, next) => {
     const allStatuses = [];
     let page = 1;
     while (true) {
-      const result = await client.indexes.indexedAssets.list(indexId, { page, pageLimit: 50 });
+      const result = await req.tlClient.indexes.indexedAssets.list(indexId, { page, pageLimit: 50 });
       const items = result.data || [];
       for (const item of items) {
         allStatuses.push({
@@ -178,11 +179,11 @@ router.get('/:id/status', async (req, res, next) => {
 
     let assetStatus = null;
     if (assetId) {
-      const asset = await client.assets.retrieve(assetId);
+      const asset = await req.tlClient.assets.retrieve(assetId);
       assetStatus = asset.status;
     }
 
-    const indexedAsset = await client.indexes.indexedAssets.retrieve(indexId, id);
+    const indexedAsset = await req.tlClient.indexes.indexedAssets.retrieve(indexId, id);
 
     res.json({
       assetStatus,
@@ -204,7 +205,7 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(400).json({ error: 'indexId query parameter is required' });
     }
 
-    await client.indexes.indexedAssets.delete(indexId, id);
+    await req.tlClient.indexes.indexedAssets.delete(indexId, id);
 
     res.status(204).end();
   } catch (err) {

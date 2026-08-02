@@ -5,6 +5,7 @@ import { goToProjects } from './navigation.js';
 import { loadVideos, uploadVideo, deleteVideo, closeVideoPreview } from './videos.js';
 import { executeSearch } from './search.js';
 import { executeAnalyze } from './analyze.js';
+import { getSession, setSession, clearSession, getUserName, apiFetch } from './auth.js';
 
 // --- Theme Toggle ---
 
@@ -164,5 +165,61 @@ document.querySelectorAll('.modal-overlay').forEach((overlay) => {
   });
 });
 
+// --- Auth ---
+
+function showView(viewId) {
+  document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+  document.getElementById(viewId).classList.add('active');
+}
+
+function updateUserDisplay() {
+  const name = getUserName();
+  document.getElementById('user-display-name').textContent = name;
+  document.getElementById('user-display-name-ws').textContent = name;
+}
+
+function handleLogin() {
+  const nameInput = document.getElementById('input-login-name');
+  const apiKeyInput = document.getElementById('input-login-apikey');
+  const errorEl = document.getElementById('login-error');
+  const name = nameInput.value.trim();
+  const apiKey = apiKeyInput.value.trim();
+
+  errorEl.classList.add('hidden');
+
+  if (!name || !apiKey) {
+    errorEl.textContent = '이름과 API Key를 모두 입력하세요.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  setSession(name, apiKey);
+  updateUserDisplay();
+  showView('projects-view');
+  loadProjects();
+}
+
+function handleLogout() {
+  clearSession();
+  showView('login-view');
+  document.getElementById('input-login-name').value = '';
+  document.getElementById('input-login-apikey').value = '';
+}
+
+document.getElementById('btn-login').addEventListener('click', handleLogin);
+document.getElementById('input-login-apikey').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') handleLogin();
+});
+document.getElementById('input-login-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('input-login-apikey').focus();
+});
+document.getElementById('btn-logout').addEventListener('click', handleLogout);
+
 // --- Init ---
-loadProjects();
+if (getSession()) {
+  updateUserDisplay();
+  showView('projects-view');
+  loadProjects();
+} else {
+  showView('login-view');
+}

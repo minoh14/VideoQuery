@@ -2,6 +2,7 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const { createClient } = require('./lib/twelvelabs-client');
 const projectsRouter = require('./routes/projects');
 const videosRouter = require('./routes/videos');
 const searchRouter = require('./routes/search');
@@ -13,6 +14,15 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use('/api', (req, res, next) => {
+  const apiKey = req.headers['x-api-key'];
+  if (!apiKey) {
+    return res.status(401).json({ error: 'API key is required' });
+  }
+  req.tlClient = createClient(apiKey);
+  next();
+});
 
 app.use('/api/projects', projectsRouter);
 app.use('/api/videos', videosRouter);

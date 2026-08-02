@@ -1,5 +1,6 @@
 import { API, state } from './state.js';
 import { escapeHtml, formatDuration } from './utils.js';
+import { apiFetch } from './auth.js';
 
 const analyzeInput = document.getElementById('analyze-input');
 const analyzeResults = document.getElementById('analyze-results');
@@ -87,7 +88,7 @@ export async function executeAnalyze() {
   const prompt = buildPrompt();
 
   try {
-    const res = await fetch(`${API}/api/analyze`, {
+    const res = await apiFetch(`${API}/api/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ assetId, prompt }),

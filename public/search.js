@@ -1,6 +1,7 @@
 import { API, state } from './state.js';
 import { escapeHtml, formatTime } from './utils.js';
 import { closeVideoPreview } from './videos.js';
+import { apiFetch } from './auth.js';
 
 const searchInput = document.getElementById('search-input');
 const searchResults = document.getElementById('search-results');
@@ -103,7 +104,7 @@ export async function executeSearch() {
     if (query) formData.append('query', query);
     if (searchImageFile) formData.append('image', searchImageFile);
 
-    const res = await fetch(`${API}/api/search`, {
+    const res = await apiFetch(`${API}/api/search`, {
       method: 'POST',
       body: formData,
       signal,
