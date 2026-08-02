@@ -47,7 +47,10 @@
               <button id="btn-remove-image" class="btn-icon btn-remove-image hidden" title="이미지 제거">&times;</button>
               <input type="file" id="input-search-image" accept="image/*" hidden>
             </div>
-            <input type="text" id="search-input" placeholder="검색할 장면을 설명하세요...">
+            <div class="search-input-wrapper">
+              <input type="text" id="search-input" placeholder="검색할 장면을 설명하세요..." autocomplete="off">
+              <ul id="search-history-dropdown" class="search-history-dropdown hidden"></ul>
+            </div>
             <button id="btn-search" class="btn btn-primary">검색</button>
           </div>
           <div id="search-results" class="results-area">

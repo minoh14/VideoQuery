@@ -7,8 +7,53 @@ const searchResults = document.getElementById('search-results');
 const imageInput = document.getElementById('input-search-image');
 const imageNameEl = document.getElementById('search-image-name');
 const btnRemoveImage = document.getElementById('btn-remove-image');
+const historyDropdown = document.getElementById('search-history-dropdown');
+
+const HISTORY_KEY = 'videoquery_search_history';
+const MAX_HISTORY = 20;
 
 let searchImageFile = null;
+
+function getSearchHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+  } catch { return []; }
+}
+
+function saveSearchHistory(query) {
+  if (!query) return;
+  let history = getSearchHistory();
+  history = history.filter((h) => h !== query);
+  history.unshift(query);
+  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+function showHistory() {
+  const history = getSearchHistory();
+  if (!history.length) { historyDropdown.classList.add('hidden'); return; }
+  const filter = searchInput.value.trim().toLowerCase();
+  const filtered = filter ? history.filter((h) => h.toLowerCase().includes(filter)) : history;
+  if (!filtered.length) { historyDropdown.classList.add('hidden'); return; }
+  historyDropdown.innerHTML = filtered.map((h) =>
+    `<li class="search-history-item">${escapeHtml(h)}</li>`
+  ).join('');
+  historyDropdown.classList.remove('hidden');
+  historyDropdown.querySelectorAll('.search-history-item').forEach((item) => {
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      searchInput.value = item.textContent;
+      historyDropdown.classList.add('hidden');
+      executeSearch();
+    });
+  });
+}
+
+searchInput.addEventListener('focus', showHistory);
+searchInput.addEventListener('input', showHistory);
+searchInput.addEventListener('blur', () => {
+  setTimeout(() => historyDropdown.classList.add('hidden'), 150);
+});
 
 document.getElementById('btn-attach-image').addEventListener('click', () => imageInput.click());
 
@@ -38,6 +83,8 @@ export async function executeSearch() {
   const query = searchInput.value.trim();
   if (!query && !searchImageFile) return;
   if (!state.currentProject) return;
+  historyDropdown.classList.add('hidden');
+  if (query) saveSearchHistory(query);
 
   if (state.searchController) state.searchController.abort();
   state.searchController = new AbortController();

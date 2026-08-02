@@ -531,6 +531,48 @@ body {
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
 }
 
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.search-input-wrapper input {
+  width: 100%;
+}
+
+.search-history-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: #ffffff;
+  border: 1px solid #e2e4e9;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  padding: 4px 0;
+  z-index: 100;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.search-history-dropdown.hidden {
+  display: none;
+}
+
+.search-history-item {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  color: #374151;
+  cursor: pointer;
+}
+
+.search-history-item:hover {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
 #panel-analyze .query-bar {
   border-top: 1px solid #e2e4e9;
   border-bottom: none;
