@@ -1,6 +1,12 @@
 import { API, state } from './state.js';
-import { escapeHtml, openModal, closeModals } from './utils.js';
+import { escapeHtml, formatDuration, openModal, closeModals } from './utils.js';
 import { apiFetch } from './auth.js';
+
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
 
 let projectActionTarget = null;
 
@@ -27,6 +33,17 @@ function renderProjects(projects) {
     <div class="project-card" data-id="${p.id}">
       <h3>${escapeHtml(p.name)}</h3>
       <div class="meta">영상 ${p.videoCount || 0}개</div>
+      <details class="project-details" onclick="event.stopPropagation()">
+        <summary class="project-details-toggle">상세 정보</summary>
+        <div class="project-details-body">
+          <div class="meta">총 길이 ${formatDuration(p.totalDuration || 0)}</div>
+          <div class="meta">생성 ${formatDate(p.createdAt)}</div>
+          <div class="meta">수정 ${formatDate(p.updatedAt)}</div>
+          <div class="meta">만료 ${p.expiresAt ? formatDate(p.expiresAt) : '없음'}</div>
+          <div class="meta">모델 ${p.models?.length ? p.models.join(', ') : '-'}</div>
+          <div class="meta">애드온 ${p.addons?.length ? p.addons.join(', ') : '-'}</div>
+        </div>
+      </details>
       <div class="project-card-actions">
         <button class="btn-project-rename" data-id="${p.id}" title="이름 변경">&#9998;</button>
         <button class="btn-project-delete" data-id="${p.id}" title="삭제">&times;</button>

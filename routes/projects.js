@@ -39,6 +39,9 @@ router.get('/', async (req, res, next) => {
       totalDuration: index.totalDuration || 0,
       createdAt: index.createdAt,
       updatedAt: index.updatedAt,
+      expiresAt: index.expiresAt || null,
+      models: (index.models || []).map((m) => m.modelName),
+      addons: index.addons || [],
     }));
 
     res.json(projects);

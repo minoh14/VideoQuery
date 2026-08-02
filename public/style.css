@@ -150,6 +150,38 @@ body {
 .project-card .meta {
   font-size: 0.8rem;
   color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.project-card .meta-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.project-details {
+  margin-top: 8px;
+}
+
+.project-details-toggle {
+  font-size: 0.75rem;
+  color: var(--accent);
+  cursor: pointer;
+  list-style: none;
+}
+
+.project-details-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.project-details[open] .project-details-toggle {
+  margin-bottom: 6px;
+}
+
+.project-details-body .meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 3px;
 }
 
 .project-card-actions {
