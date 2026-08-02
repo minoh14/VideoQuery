@@ -6,6 +6,28 @@ const analyzeResults = document.getElementById('analyze-results');
 
 let chatHistory = [];
 
+document.getElementById('btn-export-chat').addEventListener('click', exportChat);
+
+function exportChat() {
+  if (!chatHistory.length) return;
+  const videoName = state.selectedAnalyzeVideo?.filename || '영상';
+  const lines = [`# ${videoName} — 분석 대화\n`];
+  chatHistory.forEach((msg) => {
+    if (msg.role === 'user') {
+      lines.push(`**Q:** ${msg.content}\n`);
+    } else {
+      lines.push(`**A:** ${msg.content}\n`);
+    }
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${videoName}_분석.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function selectVideoForAnalysis(video) {
   if (state.selectedAnalyzeVideo && state.selectedAnalyzeVideo.id !== video.id) {
     resetChat();

@@ -546,11 +546,18 @@ body {
 }
 
 .analyze-video-name {
+  flex: 1;
   font-size: 0.9rem;
   color: #1a1a2e;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-export {
+  margin-left: auto;
+  font-size: 0.78rem;
   white-space: nowrap;
 }
 
