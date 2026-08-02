@@ -1,5 +1,5 @@
 import { API, state } from './state.js';
-import { escapeHtml, formatDuration, openModal, closeModals } from './utils.js';
+import { escapeHtml, formatDuration, openModal, closeModals, showToast } from './utils.js';
 import { selectVideoForAnalysis } from './analyze.js';
 
 const videoList = document.getElementById('video-list');
@@ -21,10 +21,8 @@ function renderVideos(videos, totalResults) {
   state.videosCache = videos;
   updateAnalyzeVideoSelect();
 
-  const videoAssetIds = new Set(videos.map((v) => v.assetId).filter(Boolean));
-  state.pendingUploads = state.pendingUploads.filter((p) => !videoAssetIds.has(p.assetId));
-
-  const totalCount = totalResults + state.pendingUploads.length;
+  const unacknowledgedPending = state.pendingUploads.filter((p) => !p.assetId);
+  const totalCount = totalResults + unacknowledgedPending.length;
   const totalDuration = state.currentProject ? (state.currentProject.totalDuration || 0) : 0;
   const durationText = totalDuration > 0 ? ` (${formatDuration(totalDuration)})` : '';
   document.getElementById('video-count').textContent = totalCount > 0 ? `(${totalCount})${durationText}` : '';
@@ -205,7 +203,34 @@ function getBadge(status) {
 
 export function startPolling() {
   stopPolling();
-  state.pollInterval = setInterval(loadVideos, 5000);
+  state.pollInterval = setInterval(pollVideos, 5000);
+}
+
+async function pollVideos() {
+  await loadVideos();
+  await checkStatuses();
+}
+
+async function checkStatuses() {
+  if (!state.currentProject) return;
+  try {
+    const res = await fetch(`${API}/api/videos/statuses?indexId=${state.currentProject.id}`);
+    const data = await res.json();
+    const statuses = data.statuses || [];
+
+    const allAssetIds = new Set(statuses.map((s) => s.assetId).filter(Boolean));
+    state.pendingUploads = state.pendingUploads.filter((p) => !p.assetId || !allAssetIds.has(p.assetId));
+
+    for (const item of statuses) {
+      const prev = state.allVideoStatuses[item.id];
+      if (item.status === 'ready' && prev && prev !== 'ready') {
+        showToast(`"${item.filename || '영상'}" 인덱싱 완료`);
+      }
+      state.allVideoStatuses[item.id] = item.status;
+    }
+  } catch (err) {
+    // silent
+  }
 }
 
 export function stopPolling() {

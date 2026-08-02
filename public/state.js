@@ -10,6 +10,7 @@ export const state = {
   videoPage: 1,
   videoTotalPage: 1,
   videosCache: [],
+  allVideoStatuses: {},
   selectedAnalyzeVideo: null,
   uploadMode: 'url',
 };

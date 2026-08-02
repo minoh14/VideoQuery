@@ -25,3 +25,15 @@ export function openModal(id) {
 export function closeModals() {
   document.querySelectorAll('.modal-overlay').forEach((m) => m.classList.add('hidden'));
 }
+
+export function showToast(message) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<span class="toast-icon">&#10003;</span><span>${escapeHtml(message)}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('toast-out');
+    toast.addEventListener('animationend', () => toast.remove());
+  }, 4000);
+}

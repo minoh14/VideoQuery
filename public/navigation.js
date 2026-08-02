@@ -25,6 +25,8 @@ export function goToWorkspace(project) {
   state.currentProject = project;
   state.videoPage = 1;
   state.selectedAnalyzeVideo = null;
+  state.allVideoStatuses = {};
+  state.pendingUploads = [];
   workspaceTitle.textContent = project.name;
   searchResults.innerHTML = '<p class="placeholder-text">프로젝트 내 영상에서 장면을 검색합니다.</p>';
   analyzeResults.innerHTML = '<p class="placeholder-text">사이드바에서 영상을 선택한 뒤 질문하세요.</p>';

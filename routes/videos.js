@@ -136,6 +136,37 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+router.get('/statuses', async (req, res, next) => {
+  try {
+    const { indexId } = req.query;
+    if (!indexId) {
+      return res.status(400).json({ error: 'indexId query parameter is required' });
+    }
+
+    const allStatuses = [];
+    let page = 1;
+    while (true) {
+      const result = await client.indexes.indexedAssets.list(indexId, { page, pageLimit: 50 });
+      const items = result.data || [];
+      for (const item of items) {
+        allStatuses.push({
+          id: item.id,
+          assetId: item.assetId,
+          filename: item.systemMetadata?.filename || null,
+          status: item.status,
+        });
+      }
+      const totalPage = result.response?.pageInfo?.totalPage || 1;
+      if (page >= totalPage) break;
+      page++;
+    }
+
+    res.json({ statuses: allStatuses });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/:id/status', async (req, res, next) => {
   try {
     const { indexId, assetId } = req.query;
