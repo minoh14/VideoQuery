@@ -291,41 +291,44 @@ async function uploadVideoByUrl() {
 
 async function uploadVideoByFile() {
   const fileInput = document.getElementById('input-video-file');
-  const file = fileInput.files[0];
-  if (!file) return;
+  const files = Array.from(fileInput.files);
+  if (!files.length) return;
 
   const btn = document.getElementById('btn-upload-video');
   btn.disabled = true;
 
-  const title = file.name;
-  const pending = { title, assetId: null };
-  state.pendingUploads.push(pending);
-
   fileInput.value = '';
   document.getElementById('file-drop-name').textContent = '';
   closeModals();
+
+  const pendings = files.map((file) => {
+    const pending = { title: file.name, assetId: null };
+    state.pendingUploads.push(pending);
+    return { file, pending };
+  });
   loadVideos();
 
-  try {
-    const formData = new FormData();
-    formData.append('indexId', state.currentProject.id);
-    formData.append('file', file);
+  await Promise.all(pendings.map(async ({ file, pending }) => {
+    try {
+      const formData = new FormData();
+      formData.append('indexId', state.currentProject.id);
+      formData.append('file', file);
 
-    const res = await fetch(`${API}/api/videos/upload`, {
-      method: 'POST',
-      body: formData,
-    });
-    if (!res.ok) throw new Error('업로드 실패');
-    const data = await res.json();
-    pending.assetId = data.assetId;
-    loadVideos();
-  } catch (err) {
-    state.pendingUploads = state.pendingUploads.filter((p) => p !== pending);
-    loadVideos();
-    alert('파일 업로드에 실패했습니다.');
-  } finally {
-    btn.disabled = false;
-  }
+      const res = await fetch(`${API}/api/videos/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error('업로드 실패');
+      const data = await res.json();
+      pending.assetId = data.assetId;
+    } catch (err) {
+      state.pendingUploads = state.pendingUploads.filter((p) => p !== pending);
+      showToast(`${file.name} 업로드 실패`, 'error');
+    }
+  }));
+
+  loadVideos();
+  btn.disabled = false;
 }
 
 export async function deleteVideo() {

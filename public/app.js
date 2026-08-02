@@ -94,8 +94,14 @@ document.getElementById('tab-file').addEventListener('click', () => {
 
 // File input display
 document.getElementById('input-video-file').addEventListener('change', (e) => {
-  const name = e.target.files[0]?.name || '';
-  document.getElementById('file-drop-name').textContent = name;
+  const files = e.target.files;
+  if (files.length === 1) {
+    document.getElementById('file-drop-name').textContent = files[0].name;
+  } else if (files.length > 1) {
+    document.getElementById('file-drop-name').textContent = `${files.length}개 파일 선택됨`;
+  } else {
+    document.getElementById('file-drop-name').textContent = '';
+  }
 });
 
 // Drag and drop
@@ -110,13 +116,19 @@ dropArea.addEventListener('dragleave', () => {
 dropArea.addEventListener('drop', (e) => {
   e.preventDefault();
   dropArea.classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if (file) {
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
     const fileInput = document.getElementById('input-video-file');
     const dt = new DataTransfer();
-    dt.items.add(file);
+    for (const file of files) {
+      dt.items.add(file);
+    }
     fileInput.files = dt.files;
-    document.getElementById('file-drop-name').textContent = file.name;
+    if (files.length === 1) {
+      document.getElementById('file-drop-name').textContent = files[0].name;
+    } else {
+      document.getElementById('file-drop-name').textContent = `${files.length}개 파일 선택됨`;
+    }
   }
 });
 
