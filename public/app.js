@@ -1,4 +1,4 @@
-import { state } from './state.js';
+import { API, state } from './state.js';
 import { openModal, closeModals } from './utils.js';
 import { loadProjects, createProject, renameProject, deleteProject } from './projects.js';
 import { goToProjects } from './navigation.js';
@@ -178,10 +178,11 @@ function updateUserDisplay() {
   document.getElementById('user-display-name-ws').textContent = name;
 }
 
-function handleLogin() {
+async function handleLogin() {
   const nameInput = document.getElementById('input-login-name');
   const apiKeyInput = document.getElementById('input-login-apikey');
   const errorEl = document.getElementById('login-error');
+  const loginBtn = document.getElementById('btn-login');
   const name = nameInput.value.trim();
   const apiKey = apiKeyInput.value.trim();
 
@@ -193,10 +194,33 @@ function handleLogin() {
     return;
   }
 
-  setSession(name, apiKey);
-  updateUserDisplay();
-  showView('projects-view');
-  loadProjects();
+  loginBtn.disabled = true;
+  loginBtn.textContent = '확인 중...';
+
+  try {
+    const res = await fetch(`${API}/api/auth/verify`, {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey },
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.valid) {
+      errorEl.textContent = data.error || '유효하지 않은 API Key입니다.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    setSession(name, apiKey);
+    updateUserDisplay();
+    showView('projects-view');
+    loadProjects();
+  } catch (err) {
+    errorEl.textContent = '서버에 연결할 수 없습니다.';
+    errorEl.classList.remove('hidden');
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = '로그인';
+  }
 }
 
 function handleLogout() {

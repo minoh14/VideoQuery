@@ -24,6 +24,18 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+app.post('/api/auth/verify', async (req, res) => {
+  try {
+    await req.tlClient.indexes.list({ pageLimit: 1 });
+    res.json({ valid: true });
+  } catch (err) {
+    if (err.constructor?.name === 'AuthenticationError' || err.status === 401) {
+      return res.status(401).json({ valid: false, error: '유효하지 않은 API Key입니다.' });
+    }
+    return res.status(401).json({ valid: false, error: 'API Key 검증에 실패했습니다.' });
+  }
+});
+
 app.use('/api/projects', projectsRouter);
 app.use('/api/videos', videosRouter);
 app.use('/api/search', searchRouter);
