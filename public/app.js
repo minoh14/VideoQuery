@@ -467,7 +467,7 @@ async function executeAnalyze() {
   analyzeController = new AbortController();
   const signal = analyzeController.signal;
 
-  analyzeResults.innerHTML = '<div class="loading">분석 중...</div>';
+  analyzeResults.innerHTML = '<div class="loading"><span class="spinner"></span>분석 중...</div>';
 
   try {
     const res = await fetch(`${API}/api/analyze`, {
@@ -582,7 +582,7 @@ function renderAnalyzeResult(text) {
     analyzeResults.innerHTML = '<p class="placeholder-text">분석 결과가 없습니다.</p>';
     return;
   }
-  analyzeResults.innerHTML = `<div class="analyze-result">${escapeHtml(text)}</div>`;
+  analyzeResults.innerHTML = `<div class="analyze-result">${escapeHtml(text.trim())}</div>`;
 }
 
 // --- Polling ---
