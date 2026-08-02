@@ -31,16 +31,30 @@
       </aside>
       <div id="sidebar-resizer" class="sidebar-resizer"></div>
       <main class="main-content">
-        <div class="query-bar">
-          <div class="query-toggle">
-            <button id="mode-search" class="toggle-btn active">검색</button>
-            <button id="mode-analyze" class="toggle-btn">분석</button>
-          </div>
-          <input type="text" id="query-input" placeholder="자연어로 질의하세요...">
-          <button id="btn-query" class="btn btn-primary">실행</button>
+        <div class="main-tabs">
+          <button id="tab-search" class="main-tab active">검색</button>
+          <button id="tab-analyze" class="main-tab">분석</button>
         </div>
-        <div id="results-area" class="results-area">
-          <p class="placeholder-text">검색 또는 분석 결과가 여기에 표시됩니다.</p>
+        <div id="panel-search" class="tab-panel active">
+          <div class="query-bar">
+            <input type="text" id="search-input" placeholder="검색할 장면을 설명하세요...">
+            <button id="btn-search" class="btn btn-primary">검색</button>
+          </div>
+          <div id="search-results" class="results-area">
+            <p class="placeholder-text">프로젝트 내 영상에서 장면을 검색합니다.</p>
+          </div>
+        </div>
+        <div id="panel-analyze" class="tab-panel">
+          <div class="query-bar">
+            <select id="analyze-video-select" class="video-select">
+              <option value="">영상을 선택하세요</option>
+            </select>
+            <input type="text" id="analyze-input" placeholder="영상에 대해 질문하세요...">
+            <button id="btn-analyze" class="btn btn-primary">분석</button>
+          </div>
+          <div id="analyze-results" class="results-area">
+            <p class="placeholder-text">선택한 영상에 대해 질문하고 답변을 받습니다.</p>
+          </div>
         </div>
       </main>
     </div>

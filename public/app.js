@@ -2,13 +2,14 @@ const API = '';
 
 // State
 let currentProject = null;
-let queryMode = 'search';
 let deleteTarget = null;
 let pollInterval = null;
-let queryController = null;
+let searchController = null;
+let analyzeController = null;
 let pendingUploads = [];
 let videoPage = 1;
 let videoTotalPage = 1;
+let videosCache = [];
 
 // DOM refs
 const projectsView = document.getElementById('projects-view');
@@ -16,8 +17,11 @@ const workspaceView = document.getElementById('workspace-view');
 const projectsGrid = document.getElementById('projects-grid');
 const workspaceTitle = document.getElementById('workspace-title');
 const videoList = document.getElementById('video-list');
-const queryInput = document.getElementById('query-input');
-const resultsArea = document.getElementById('results-area');
+const searchInput = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+const analyzeInput = document.getElementById('analyze-input');
+const analyzeResults = document.getElementById('analyze-results');
+const analyzeVideoSelect = document.getElementById('analyze-video-select');
 
 // --- Navigation ---
 
@@ -37,7 +41,8 @@ function goToWorkspace(project) {
   currentProject = project;
   videoPage = 1;
   workspaceTitle.textContent = project.name;
-  resultsArea.innerHTML = '<p class="placeholder-text">검색 또는 분석 결과가 여기에 표시됩니다.</p>';
+  searchResults.innerHTML = '<p class="placeholder-text">프로젝트 내 영상에서 장면을 검색합니다.</p>';
+  analyzeResults.innerHTML = '<p class="placeholder-text">선택한 영상에 대해 질문하고 답변을 받습니다.</p>';
   showView(workspaceView);
   loadVideos();
   startPolling();
@@ -119,6 +124,9 @@ async function loadVideos() {
 }
 
 function renderVideos(videos, totalResults) {
+  videosCache = videos;
+  updateAnalyzeVideoSelect();
+
   const videoAssetIds = new Set(videos.map((v) => v.assetId).filter(Boolean));
   pendingUploads = pendingUploads.filter((p) => !videoAssetIds.has(p.assetId));
 
@@ -376,7 +384,6 @@ async function deleteVideo() {
     deleteTarget = null;
     closeModals();
     loadVideos();
-    resultsArea.innerHTML = '<p class="placeholder-text">검색 또는 분석 결과가 여기에 표시됩니다.</p>';
   } catch (err) {
     alert('영상 삭제에 실패했습니다.');
   } finally {
@@ -384,73 +391,96 @@ async function deleteVideo() {
   }
 }
 
-// --- Query ---
+// --- Search ---
 
-async function executeQuery() {
-  const query = queryInput.value.trim();
+async function executeSearch() {
+  const query = searchInput.value.trim();
   if (!query || !currentProject) return;
 
-  if (queryController) queryController.abort();
-  queryController = new AbortController();
-  const signal = queryController.signal;
+  if (searchController) searchController.abort();
+  searchController = new AbortController();
+  const signal = searchController.signal;
 
-  resultsArea.querySelectorAll('video').forEach((v) => {
+  searchResults.querySelectorAll('video').forEach((v) => {
     v.pause();
     v.src = '';
   });
-  resultsArea.innerHTML = '<div class="loading">처리 중...</div>';
+  searchResults.innerHTML = '<div class="loading">검색 중...</div>';
 
   try {
-    if (queryMode === 'search') {
-      const res = await fetch(`${API}/api/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          indexId: currentProject.id,
-          query,
-          searchOptions: ['visual', 'audio'],
-        }),
-        signal,
-      });
-      if (!res.ok) throw new Error('검색 실패');
-      const data = await res.json();
-      if (signal.aborted) return;
-      renderSearchResults(data.clips);
-    } else {
-      const res = await fetch(`${API}/api/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assetId: getFirstReadyAssetId(),
-          prompt: query,
-        }),
-        signal,
-      });
-      if (!res.ok) throw new Error('분석 실패');
-      const data = await res.json();
-      if (signal.aborted) return;
-      renderAnalyzeResult(data.text);
-    }
+    const res = await fetch(`${API}/api/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        indexId: currentProject.id,
+        query,
+        searchOptions: ['visual', 'audio'],
+      }),
+      signal,
+    });
+    if (!res.ok) throw new Error('검색 실패');
+    const data = await res.json();
+    if (signal.aborted) return;
+    renderSearchResults(data.clips);
   } catch (err) {
     if (err.name === 'AbortError') return;
-    resultsArea.innerHTML = `<p class="placeholder-text">오류: ${escapeHtml(err.message)}</p>`;
+    searchResults.innerHTML = `<p class="placeholder-text">오류: ${escapeHtml(err.message)}</p>`;
   }
 }
 
-function getFirstReadyAssetId() {
-  const item = videoList.querySelector('li[data-asset-id]');
-  return item ? item.dataset.assetId : null;
+// --- Analyze ---
+
+function updateAnalyzeVideoSelect() {
+  const currentValue = analyzeVideoSelect.value;
+  const readyVideos = videosCache.filter((v) => v.status === 'ready');
+  analyzeVideoSelect.innerHTML = '<option value="">영상을 선택하세요</option>' +
+    readyVideos.map((v) => `<option value="${v.assetId}">${escapeHtml(v.filename || '제목 없음')}</option>`).join('');
+  if (currentValue && readyVideos.some((v) => v.assetId === currentValue)) {
+    analyzeVideoSelect.value = currentValue;
+  }
 }
 
-function renderSearchResults(clips) {
-  resultsArea.innerHTML = '';
-
-  if (!clips || !clips.length) {
-    resultsArea.innerHTML = '<p class="placeholder-text">검색 결과가 없습니다.</p>';
+async function executeAnalyze() {
+  const query = analyzeInput.value.trim();
+  const assetId = analyzeVideoSelect.value;
+  if (!query || !currentProject) return;
+  if (!assetId) {
+    analyzeResults.innerHTML = '<p class="placeholder-text">분석할 영상을 선택해주세요.</p>';
     return;
   }
 
-  resultsArea.innerHTML = clips
+  if (analyzeController) analyzeController.abort();
+  analyzeController = new AbortController();
+  const signal = analyzeController.signal;
+
+  analyzeResults.innerHTML = '<div class="loading">분석 중...</div>';
+
+  try {
+    const res = await fetch(`${API}/api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assetId, prompt: query }),
+      signal,
+    });
+    if (!res.ok) throw new Error('분석 실패');
+    const data = await res.json();
+    if (signal.aborted) return;
+    renderAnalyzeResult(data.text);
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    analyzeResults.innerHTML = `<p class="placeholder-text">오류: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function renderSearchResults(clips) {
+  searchResults.innerHTML = '';
+
+  if (!clips || !clips.length) {
+    searchResults.innerHTML = '<p class="placeholder-text">검색 결과가 없습니다.</p>';
+    return;
+  }
+
+  searchResults.innerHTML = clips
     .map(
       (clip, i) => {
         const thumbSrc = clip.thumbnailUrl
@@ -475,7 +505,7 @@ function renderSearchResults(clips) {
     )
     .join('');
 
-  resultsArea.querySelectorAll('.clip-card').forEach((card) => {
+  searchResults.querySelectorAll('.clip-card').forEach((card) => {
     card.addEventListener('click', () => {
       const idx = parseInt(card.dataset.index);
       const clip = clips[idx];
@@ -535,10 +565,10 @@ function playClip(index, clip) {
 
 function renderAnalyzeResult(text) {
   if (!text) {
-    resultsArea.innerHTML = '<p class="placeholder-text">분석 결과가 없습니다.</p>';
+    analyzeResults.innerHTML = '<p class="placeholder-text">분석 결과가 없습니다.</p>';
     return;
   }
-  resultsArea.innerHTML = `<div class="analyze-result">${escapeHtml(text)}</div>`;
+  analyzeResults.innerHTML = `<div class="analyze-result">${escapeHtml(text)}</div>`;
 }
 
 // --- Polling ---
@@ -626,7 +656,23 @@ document.getElementById('btn-close-video-preview').addEventListener('click', clo
 document.getElementById('modal-video-preview').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeVideoPreview();
 });
-document.getElementById('btn-query').addEventListener('click', executeQuery);
+document.getElementById('btn-search').addEventListener('click', executeSearch);
+document.getElementById('btn-analyze').addEventListener('click', executeAnalyze);
+
+// Main tabs
+document.getElementById('tab-search').addEventListener('click', () => {
+  document.getElementById('tab-search').classList.add('active');
+  document.getElementById('tab-analyze').classList.remove('active');
+  document.getElementById('panel-search').classList.add('active');
+  document.getElementById('panel-analyze').classList.remove('active');
+});
+
+document.getElementById('tab-analyze').addEventListener('click', () => {
+  document.getElementById('tab-analyze').classList.add('active');
+  document.getElementById('tab-search').classList.remove('active');
+  document.getElementById('panel-analyze').classList.add('active');
+  document.getElementById('panel-search').classList.remove('active');
+});
 
 // Upload tabs
 document.getElementById('tab-url').addEventListener('click', () => {
@@ -673,24 +719,12 @@ dropArea.addEventListener('drop', (e) => {
   }
 });
 
-document.getElementById('mode-search').addEventListener('click', () => {
-  queryMode = 'search';
-  document.getElementById('mode-search').classList.add('active');
-  document.getElementById('mode-analyze').classList.remove('active');
-  queryInput.placeholder = '검색할 장면을 설명하세요...';
-  resultsArea.innerHTML = '<p class="placeholder-text">검색 또는 분석 결과가 여기에 표시됩니다.</p>';
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') executeSearch();
 });
 
-document.getElementById('mode-analyze').addEventListener('click', () => {
-  queryMode = 'analyze';
-  document.getElementById('mode-analyze').classList.add('active');
-  document.getElementById('mode-search').classList.remove('active');
-  queryInput.placeholder = '영상에 대해 질문하세요...';
-  resultsArea.innerHTML = '<p class="placeholder-text">검색 또는 분석 결과가 여기에 표시됩니다.</p>';
-});
-
-queryInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') executeQuery();
+analyzeInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') executeAnalyze();
 });
 
 document.querySelectorAll('.modal-cancel').forEach((btn) => {
