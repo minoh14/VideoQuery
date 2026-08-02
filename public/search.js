@@ -79,35 +79,74 @@ function renderSearchResults(clips) {
     return;
   }
 
-  searchResults.innerHTML = clips
-    .map(
-      (clip, i) => {
-        const thumbSrc = clip.thumbnailUrl
-          ? `${clip.thumbnailUrl}${clip.thumbnailUrl.includes('?') ? '&' : '?'}time=${clip.start || 0}`
-          : '';
-        return `
-    <div class="clip-card" data-index="${i}">
-      <div class="clip-info">
-        <div class="clip-thumbnail">
-          ${thumbSrc ? `<img src="${thumbSrc}" alt="thumbnail">` : '<div class="clip-thumbnail-placeholder"></div>'}
-          <div class="clip-play-icon">&#9654;</div>
+  const grouped = new Map();
+  clips.forEach((clip, i) => {
+    const key = clip.videoId;
+    if (!grouped.has(key)) {
+      grouped.set(key, { title: clip.videoTitle || clip.videoId, duration: clip.videoDuration, clips: [] });
+    }
+    grouped.get(key).clips.push({ ...clip, _index: i });
+  });
+
+  let html = '';
+  for (const [videoId, group] of grouped) {
+    const duration = group.duration;
+    let timelineHtml = '';
+    if (duration) {
+      const segments = group.clips.map((c) => {
+        const left = ((c.start || 0) / duration) * 100;
+        const width = Math.max(((c.end - (c.start || 0)) / duration) * 100, 0.5);
+        return `<div class="timeline-segment" data-clip-index="${c._index}" style="left:${left}%;width:${width}%" title="${formatTime(c.start)} – ${formatTime(c.end)}"></div>`;
+      }).join('');
+      timelineHtml = `
+        <div class="timeline-bar-container">
+          <div class="timeline-bar">${segments}</div>
+          <div class="timeline-labels">
+            <span>0:00</span><span>${formatTime(duration)}</span>
+          </div>
+        </div>`;
+    }
+
+    const clipsHtml = group.clips.map((clip) => {
+      const thumbSrc = clip.thumbnailUrl
+        ? `${clip.thumbnailUrl}${clip.thumbnailUrl.includes('?') ? '&' : '?'}time=${clip.start || 0}`
+        : '';
+      return `
+      <div class="clip-card" data-index="${clip._index}">
+        <div class="clip-info">
+          <div class="clip-thumbnail">
+            ${thumbSrc ? `<img src="${thumbSrc}" alt="thumbnail">` : '<div class="clip-thumbnail-placeholder"></div>'}
+            <div class="clip-play-icon">&#9654;</div>
+          </div>
+          <div class="clip-meta">
+            <span class="clip-time">${formatTime(clip.start)} – ${formatTime(clip.end)}</span>
+            ${clip.transcription ? `<p class="clip-transcription">${escapeHtml(clip.transcription)}</p>` : ''}
+          </div>
         </div>
-        <div class="clip-meta">
-          <span class="clip-title">${escapeHtml(clip.videoTitle || clip.videoId)}</span>
-          <span class="clip-time">${formatTime(clip.start)} – ${formatTime(clip.end)}</span>
-          ${clip.transcription ? `<p class="clip-transcription">${escapeHtml(clip.transcription)}</p>` : ''}
-        </div>
-      </div>
+      </div>`;
+    }).join('');
+
+    html += `
+    <div class="video-group">
+      <div class="video-group-header">${escapeHtml(group.title)}</div>
+      ${timelineHtml}
+      <div class="video-group-clips">${clipsHtml}</div>
     </div>`;
-      }
-    )
-    .join('');
+  }
+
+  searchResults.innerHTML = html;
 
   searchResults.querySelectorAll('.clip-card').forEach((card) => {
     card.addEventListener('click', () => {
       const idx = parseInt(card.dataset.index);
-      const clip = clips[idx];
-      playClipInModal(clip);
+      playClipInModal(clips[idx]);
+    });
+  });
+
+  searchResults.querySelectorAll('.timeline-segment').forEach((seg) => {
+    seg.addEventListener('click', () => {
+      const idx = parseInt(seg.dataset.clipIndex);
+      playClipInModal(clips[idx]);
     });
   });
 }

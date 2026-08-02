@@ -606,15 +606,14 @@ body {
 
 .clip-card .clip-info {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .clip-thumbnail {
   position: relative;
-  width: 140px;
-  min-width: 140px;
-  height: 80px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
   border-radius: 6px;
   overflow: hidden;
   background: #e5e7eb;
@@ -673,10 +672,56 @@ body {
   margin-top: 2px;
 }
 
-.clip-player-container video {
-  width: 100%;
-  border-radius: 6px;
-  margin-top: 10px;
+.video-group {
+  margin-bottom: 24px;
+}
+
+.video-group-header {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  color: #1a1a2e;
+}
+
+.video-group-clips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.timeline-bar-container {
+  margin-bottom: 12px;
+}
+
+.timeline-bar {
+  position: relative;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.timeline-segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #4f46e5;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.timeline-segment:hover {
+  opacity: 1;
+}
+
+.timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-top: 2px;
 }
 
 .modal.modal-video {

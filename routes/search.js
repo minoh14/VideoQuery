@@ -43,17 +43,19 @@ router.post('/', upload.single('image'), async (req, res, next) => {
     }));
 
     const videoIds = [...new Set(clips.map((c) => c.videoId).filter(Boolean))];
-    const hlsMap = {};
+    const assetMap = {};
     await Promise.all(
       videoIds.map(async (id) => {
         try {
           const asset = await client.indexes.indexedAssets.retrieve(indexId, id);
-          if (asset.hls?.videoUrl) hlsMap[id] = asset.hls.videoUrl;
+          assetMap[id] = { hlsUrl: asset.hls?.videoUrl || null, duration: asset.metadata?.duration || null };
         } catch (e) {}
       })
     );
     clips.forEach((clip) => {
-      clip.hlsUrl = hlsMap[clip.videoId] || null;
+      const info = assetMap[clip.videoId] || {};
+      clip.hlsUrl = info.hlsUrl || null;
+      clip.videoDuration = info.duration || null;
     });
 
     res.json({ clips });
