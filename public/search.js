@@ -10,14 +10,18 @@ const imageNameEl = document.getElementById('search-image-name');
 const btnRemoveImage = document.getElementById('btn-remove-image');
 const historyDropdown = document.getElementById('search-history-dropdown');
 
-const HISTORY_KEY = 'videoquery_search_history';
+const HISTORY_KEY_PREFIX = 'videoquery_search_history_';
 const MAX_HISTORY = 20;
 
 let searchImageFile = null;
 
+function getHistoryKey() {
+  return HISTORY_KEY_PREFIX + (state.currentProject?.id || 'global');
+}
+
 function getSearchHistory() {
   try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+    return JSON.parse(localStorage.getItem(getHistoryKey())) || [];
   } catch { return []; }
 }
 
@@ -27,7 +31,7 @@ function saveSearchHistory(query) {
   history = history.filter((h) => h !== query);
   history.unshift(query);
   if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  localStorage.setItem(getHistoryKey(), JSON.stringify(history));
 }
 
 function showHistory() {
