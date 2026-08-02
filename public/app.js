@@ -475,9 +475,14 @@ function updateAnalyzeIndicator() {
     thumbEl.innerHTML = '<div class="analyze-thumb-placeholder"></div>';
   }
   if (selectedAnalyzeVideo) {
-    nameEl.textContent = selectedAnalyzeVideo.filename || '제목 없음';
+    const durationHtml = selectedAnalyzeVideo.duration
+      ? `<span class="video-duration">${formatDuration(selectedAnalyzeVideo.duration)}</span>`
+      : '';
+    nameEl.innerHTML = `${escapeHtml(selectedAnalyzeVideo.filename || '제목 없음')} ${durationHtml}`;
+    nameEl.style.color = '';
   } else {
     nameEl.textContent = '사이드바에서 영상을 선택하세요';
+    nameEl.style.color = '#9ca3af';
   }
   const hasSelection = !!selectedAnalyzeVideo;
   analyzeInput.disabled = !hasSelection;
