@@ -3,6 +3,29 @@ import { escapeHtml, formatTime } from './utils.js';
 
 const searchInput = document.getElementById('search-input');
 const searchResults = document.getElementById('search-results');
+const imageInput = document.getElementById('input-search-image');
+const imageNameEl = document.getElementById('search-image-name');
+const btnRemoveImage = document.getElementById('btn-remove-image');
+
+let searchImageFile = null;
+
+document.getElementById('btn-attach-image').addEventListener('click', () => imageInput.click());
+
+imageInput.addEventListener('change', () => {
+  const file = imageInput.files[0];
+  if (file) {
+    searchImageFile = file;
+    imageNameEl.textContent = file.name;
+    btnRemoveImage.classList.remove('hidden');
+  }
+});
+
+btnRemoveImage.addEventListener('click', () => {
+  searchImageFile = null;
+  imageInput.value = '';
+  imageNameEl.textContent = '';
+  btnRemoveImage.classList.add('hidden');
+});
 
 function getSearchOptions() {
   const checked = document.querySelectorAll('.search-options input:checked');
@@ -12,7 +35,8 @@ function getSearchOptions() {
 
 export async function executeSearch() {
   const query = searchInput.value.trim();
-  if (!query || !state.currentProject) return;
+  if (!query && !searchImageFile) return;
+  if (!state.currentProject) return;
 
   if (state.searchController) state.searchController.abort();
   state.searchController = new AbortController();
@@ -25,14 +49,15 @@ export async function executeSearch() {
   searchResults.innerHTML = '<div class="loading"><span class="spinner"></span>검색 중...</div>';
 
   try {
+    const formData = new FormData();
+    formData.append('indexId', state.currentProject.id);
+    formData.append('searchOptions', JSON.stringify(getSearchOptions()));
+    if (query) formData.append('query', query);
+    if (searchImageFile) formData.append('image', searchImageFile);
+
     const res = await fetch(`${API}/api/search`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        indexId: state.currentProject.id,
-        query,
-        searchOptions: getSearchOptions(),
-      }),
+      body: formData,
       signal,
     });
     if (!res.ok) throw new Error('검색 실패');

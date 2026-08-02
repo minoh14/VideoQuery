@@ -468,6 +468,53 @@ body {
   display: none;
 }
 
+.search-image-attach {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.btn-icon:hover {
+  border-color: #4f46e5;
+  background: #eef2ff;
+}
+
+.search-image-name {
+  font-size: 0.75rem;
+  color: #4f46e5;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-remove-image {
+  border: none;
+  padding: 2px 6px;
+  font-size: 1rem;
+  color: #6b7280;
+}
+
+.btn-remove-image:hover {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+.btn-remove-image.hidden {
+  display: none;
+}
+
 .query-bar input[type="text"] {
   flex: 1;
   padding: 8px 14px;

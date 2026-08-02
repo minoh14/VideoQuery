@@ -1,21 +1,37 @@
 const { Router } = require('express');
+const multer = require('multer');
 const client = require('../lib/twelvelabs-client');
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-router.post('/', async (req, res, next) => {
+router.post('/', upload.single('image'), async (req, res, next) => {
   try {
-    const { indexId, query, searchOptions } = req.body;
-    if (!indexId || !query) {
-      return res.status(400).json({ error: 'indexId and query are required' });
+    const indexId = req.body.indexId;
+    const query = req.body.query;
+    const searchOptions = req.body.searchOptions ? JSON.parse(req.body.searchOptions) : ['visual', 'audio'];
+
+    if (!indexId) {
+      return res.status(400).json({ error: 'indexId is required' });
+    }
+    if (!query && !req.file) {
+      return res.status(400).json({ error: 'query or image is required' });
     }
 
-    const result = await client.search.create({
+    const params = {
       indexId,
-      queryText: query,
-      searchOptions: searchOptions || ['visual', 'audio'],
+      searchOptions,
       pageLimit: 20,
-    });
+    };
+
+    if (query) params.queryText = query;
+
+    if (req.file) {
+      params.queryMediaType = 'image';
+      params.queryMediaFile = new Blob([req.file.buffer], { type: req.file.mimetype });
+    }
+
+    const result = await client.search.create(params);
 
     const clips = (result.data || []).map((item) => ({
       videoId: item.videoId,

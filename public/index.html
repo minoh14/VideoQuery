@@ -41,6 +41,12 @@
               <label class="search-option"><input type="checkbox" value="visual" checked><span>영상</span></label>
               <label class="search-option"><input type="checkbox" value="audio" checked><span>음성</span></label>
             </div>
+            <div class="search-image-attach">
+              <button id="btn-attach-image" class="btn-icon" title="이미지로 검색">&#128247;</button>
+              <span id="search-image-name" class="search-image-name"></span>
+              <button id="btn-remove-image" class="btn-icon btn-remove-image hidden" title="이미지 제거">&times;</button>
+              <input type="file" id="input-search-image" accept="image/*" hidden>
+            </div>
             <input type="text" id="search-input" placeholder="검색할 장면을 설명하세요...">
             <button id="btn-search" class="btn btn-primary">검색</button>
           </div>
