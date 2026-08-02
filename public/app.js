@@ -6,6 +6,20 @@ import { loadVideos, uploadVideo, deleteVideo, closeVideoPreview } from './video
 import { executeSearch } from './search.js';
 import { executeAnalyze } from './analyze.js';
 
+// --- Theme Toggle ---
+
+const THEME_KEY = 'videoquery_theme';
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('btn-toggle-theme').textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem(THEME_KEY, theme);
+}
+applyTheme(localStorage.getItem(THEME_KEY) || 'light');
+document.getElementById('btn-toggle-theme').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+
 // --- Sidebar Resize ---
 
 (function initSidebarResize() {
