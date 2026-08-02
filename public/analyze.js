@@ -24,7 +24,7 @@ export function updateAnalyzeIndicator() {
     nameEl.innerHTML = `${escapeHtml(state.selectedAnalyzeVideo.filename || '제목 없음')} ${durationHtml}`;
     nameEl.style.color = '';
   } else {
-    nameEl.textContent = '사이드바에서 영상을 선택하세요';
+    nameEl.textContent = '선택된 파일이 없습니다';
     nameEl.style.color = '#9ca3af';
   }
   const hasSelection = !!state.selectedAnalyzeVideo;

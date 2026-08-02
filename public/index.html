@@ -37,6 +37,10 @@
         </div>
         <div id="panel-search" class="tab-panel active">
           <div class="query-bar">
+            <div class="search-options">
+              <label class="search-option"><input type="checkbox" value="visual" checked><span>영상</span></label>
+              <label class="search-option"><input type="checkbox" value="audio" checked><span>음성</span></label>
+            </div>
             <input type="text" id="search-input" placeholder="검색할 장면을 설명하세요...">
             <button id="btn-search" class="btn btn-primary">검색</button>
           </div>
@@ -49,7 +53,7 @@
             <div class="analyze-thumb" id="analyze-thumb">
               <div class="analyze-thumb-placeholder"></div>
             </div>
-            <span class="analyze-video-name" id="analyze-video-name">사이드바에서 영상을 선택하세요</span>
+            <span class="analyze-video-name" id="analyze-video-name">선택된 파일이 없습니다</span>
           </div>
           <div class="query-bar">
             <input type="text" id="analyze-input" placeholder="사이드바에서 영상을 선택하세요..." disabled>

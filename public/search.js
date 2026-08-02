@@ -4,6 +4,12 @@ import { escapeHtml, formatTime } from './utils.js';
 const searchInput = document.getElementById('search-input');
 const searchResults = document.getElementById('search-results');
 
+function getSearchOptions() {
+  const checked = document.querySelectorAll('.search-options input:checked');
+  const options = Array.from(checked).map((el) => el.value);
+  return options.length > 0 ? options : ['visual'];
+}
+
 export async function executeSearch() {
   const query = searchInput.value.trim();
   if (!query || !state.currentProject) return;
@@ -25,7 +31,7 @@ export async function executeSearch() {
       body: JSON.stringify({
         indexId: state.currentProject.id,
         query,
-        searchOptions: ['visual', 'audio'],
+        searchOptions: getSearchOptions(),
       }),
       signal,
     });

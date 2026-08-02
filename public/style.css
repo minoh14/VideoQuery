@@ -400,6 +400,35 @@ body {
   background: #ffffff;
 }
 
+.search-options {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.search-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid #e2e4e9;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #6b7280;
+  cursor: pointer;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.search-option:has(input:checked) {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.search-option input {
+  display: none;
+}
+
 .query-bar input[type="text"] {
   flex: 1;
   padding: 8px 14px;
