@@ -9,14 +9,38 @@ function formatDate(dateStr) {
 }
 
 let projectActionTarget = null;
+let allProjects = [];
 
 const projectsGrid = document.getElementById('projects-grid');
+const filterInput = document.getElementById('input-project-filter');
+const sortSelect = document.getElementById('select-project-sort');
+
+filterInput.addEventListener('input', () => renderProjects(getFilteredProjects()));
+sortSelect.addEventListener('change', () => renderProjects(getFilteredProjects()));
+
+function getFilteredProjects() {
+  const query = filterInput.value.trim().toLowerCase();
+  let filtered = allProjects;
+  if (query) {
+    filtered = filtered.filter((p) => (p.name || '').toLowerCase().includes(query));
+  }
+  const sort = sortSelect.value;
+  filtered = [...filtered].sort((a, b) => {
+    switch (sort) {
+      case 'oldest': return new Date(a.createdAt) - new Date(b.createdAt);
+      case 'name': return (a.name || '').localeCompare(b.name || '');
+      case 'videos': return (b.videoCount || 0) - (a.videoCount || 0);
+      default: return new Date(b.createdAt) - new Date(a.createdAt);
+    }
+  });
+  return filtered;
+}
 
 export async function loadProjects() {
   try {
     const res = await apiFetch(`${API}/api/projects`);
-    const projects = await res.json();
-    renderProjects(projects);
+    allProjects = await res.json();
+    renderProjects(getFilteredProjects());
   } catch (err) {
     projectsGrid.innerHTML = '<p class="placeholder-text">프로젝트를 불러오지 못했습니다.</p>';
   }

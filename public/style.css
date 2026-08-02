@@ -119,6 +119,38 @@ body {
   cursor: not-allowed;
 }
 
+.projects-toolbar {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px 0;
+}
+
+.project-filter-input {
+  flex: 1;
+  max-width: 300px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.project-filter-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.project-sort-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
 /* Projects Grid */
 .projects-grid {
   display: grid;

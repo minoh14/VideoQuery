@@ -30,6 +30,15 @@
       <button id="btn-new-project" class="btn btn-primary">+ 새 프로젝트</button>
       <button id="btn-logout" class="btn btn-ghost" title="로그아웃">로그아웃</button>
     </header>
+    <div class="projects-toolbar">
+      <input type="text" id="input-project-filter" class="project-filter-input" placeholder="프로젝트 검색...">
+      <select id="select-project-sort" class="project-sort-select">
+        <option value="newest">최신순</option>
+        <option value="oldest">오래된순</option>
+        <option value="name">이름순</option>
+        <option value="videos">영상 많은순</option>
+      </select>
+    </div>
     <div id="projects-grid" class="projects-grid"></div>
   </section>
 
