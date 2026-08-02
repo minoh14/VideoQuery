@@ -21,7 +21,7 @@ const searchInput = document.getElementById('search-input');
 const searchResults = document.getElementById('search-results');
 const analyzeInput = document.getElementById('analyze-input');
 const analyzeResults = document.getElementById('analyze-results');
-const analyzeVideoSelect = document.getElementById('analyze-video-select');
+let selectedAnalyzeVideo = null;
 
 // --- Navigation ---
 
@@ -40,9 +40,11 @@ function goToProjects() {
 function goToWorkspace(project) {
   currentProject = project;
   videoPage = 1;
+  selectedAnalyzeVideo = null;
   workspaceTitle.textContent = project.name;
   searchResults.innerHTML = '<p class="placeholder-text">프로젝트 내 영상에서 장면을 검색합니다.</p>';
-  analyzeResults.innerHTML = '<p class="placeholder-text">선택한 영상에 대해 질문하고 답변을 받습니다.</p>';
+  analyzeResults.innerHTML = '<p class="placeholder-text">사이드바에서 영상을 선택한 뒤 질문하세요.</p>';
+  updateAnalyzeIndicator();
   showView(workspaceView);
   loadVideos();
   startPolling();
@@ -196,7 +198,13 @@ function renderVideos(videos, totalResults) {
   videoList.querySelectorAll('li[data-id]').forEach((li) => {
     li.addEventListener('click', () => {
       const video = videos.find((v) => v.id === li.dataset.id);
-      if (video) showVideoPreview(video);
+      if (!video) return;
+      const analyzeActive = document.getElementById('panel-analyze').classList.contains('active');
+      if (analyzeActive) {
+        if (video.status === 'ready') selectVideoForAnalysis(video);
+      } else {
+        showVideoPreview(video);
+      }
     });
   });
 
@@ -265,9 +273,12 @@ function closeVideoPreview() {
 }
 
 function getBadge(status) {
+  const analyzeActive = document.getElementById('panel-analyze').classList.contains('active');
   switch (status) {
     case 'ready':
-      return { cls: 'badge-ready', label: '검색 가능' };
+      return analyzeActive
+        ? { cls: 'badge-analyze-ready', label: '분석 가능' }
+        : { cls: 'badge-ready', label: '검색 가능' };
     case 'indexing':
       return { cls: 'badge-indexing', label: '인덱싱 중' };
     case 'pending':
@@ -405,7 +416,7 @@ async function executeSearch() {
     v.pause();
     v.src = '';
   });
-  searchResults.innerHTML = '<div class="loading">검색 중...</div>';
+  searchResults.innerHTML = '<div class="loading"><span class="spinner"></span>검색 중...</div>';
 
   try {
     const res = await fetch(`${API}/api/search`, {
@@ -431,37 +442,39 @@ async function executeSearch() {
 // --- Analyze ---
 
 function updateAnalyzeVideoSelect() {
-  const currentValue = analyzeVideoSelect.value;
-  const readyVideos = videosCache.filter((v) => v.status === 'ready');
-  analyzeVideoSelect.innerHTML = '<option value="">영상을 선택하세요</option>' +
-    readyVideos.map((v) => `<option value="${v.assetId}">${escapeHtml(v.filename || '제목 없음')}</option>`).join('');
-  if (currentValue && readyVideos.some((v) => v.assetId === currentValue)) {
-    analyzeVideoSelect.value = currentValue;
+  if (selectedAnalyzeVideo && !videosCache.some((v) => v.id === selectedAnalyzeVideo.id && v.status === 'ready')) {
+    selectedAnalyzeVideo = null;
   }
-  updateAnalyzeThumb();
+  updateAnalyzeIndicator();
 }
 
-function updateAnalyzeThumb() {
+function selectVideoForAnalysis(video) {
+  selectedAnalyzeVideo = video;
+  updateAnalyzeIndicator();
+}
+
+function updateAnalyzeIndicator() {
   const thumbEl = document.getElementById('analyze-thumb');
-  const selected = videosCache.find((v) => v.assetId === analyzeVideoSelect.value);
-  if (selected && selected.thumbnailUrl) {
-    thumbEl.innerHTML = `<img src="${selected.thumbnailUrl}" alt="">`;
+  const nameEl = document.getElementById('analyze-video-name');
+  if (selectedAnalyzeVideo && selectedAnalyzeVideo.thumbnailUrl) {
+    thumbEl.innerHTML = `<img src="${selectedAnalyzeVideo.thumbnailUrl}" alt="">`;
   } else {
     thumbEl.innerHTML = '<div class="analyze-thumb-placeholder"></div>';
   }
-  const hasSelection = !!analyzeVideoSelect.value;
+  if (selectedAnalyzeVideo) {
+    nameEl.textContent = selectedAnalyzeVideo.filename || '제목 없음';
+  } else {
+    nameEl.textContent = '사이드바에서 영상을 선택하세요';
+  }
+  const hasSelection = !!selectedAnalyzeVideo;
   analyzeInput.disabled = !hasSelection;
   document.getElementById('btn-analyze').disabled = !hasSelection;
 }
 
 async function executeAnalyze() {
   const query = analyzeInput.value.trim();
-  const assetId = analyzeVideoSelect.value;
-  if (!query || !currentProject) return;
-  if (!assetId) {
-    analyzeResults.innerHTML = '<p class="placeholder-text">분석할 영상을 선택해주세요.</p>';
-    return;
-  }
+  if (!query || !currentProject || !selectedAnalyzeVideo) return;
+  const assetId = selectedAnalyzeVideo.assetId;
 
   if (analyzeController) analyzeController.abort();
   analyzeController = new AbortController();
@@ -679,6 +692,7 @@ document.getElementById('tab-search').addEventListener('click', () => {
   document.getElementById('tab-analyze').classList.remove('active');
   document.getElementById('panel-search').classList.add('active');
   document.getElementById('panel-analyze').classList.remove('active');
+  loadVideos();
 });
 
 document.getElementById('tab-analyze').addEventListener('click', () => {
@@ -686,6 +700,7 @@ document.getElementById('tab-analyze').addEventListener('click', () => {
   document.getElementById('tab-search').classList.remove('active');
   document.getElementById('panel-analyze').classList.add('active');
   document.getElementById('panel-search').classList.remove('active');
+  loadVideos();
 });
 
 // Upload tabs
@@ -741,7 +756,6 @@ analyzeInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') executeAnalyze();
 });
 
-analyzeVideoSelect.addEventListener('change', updateAnalyzeThumb);
 
 document.querySelectorAll('.modal-cancel').forEach((btn) => {
   btn.addEventListener('click', closeModals);
