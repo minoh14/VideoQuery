@@ -1,0 +1,9 @@
+services:
+  videoquery:
+    build: .
+    container_name: videoquery
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    restart: unless-stopped
