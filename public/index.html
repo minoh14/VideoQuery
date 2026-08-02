@@ -46,9 +46,14 @@
         </div>
         <div id="panel-analyze" class="tab-panel">
           <div class="query-bar">
-            <select id="analyze-video-select" class="video-select">
-              <option value="">영상을 선택하세요</option>
-            </select>
+            <div class="analyze-video-picker">
+              <div class="analyze-thumb" id="analyze-thumb">
+                <div class="analyze-thumb-placeholder"></div>
+              </div>
+              <select id="analyze-video-select" class="video-select">
+                <option value="">영상을 선택하세요</option>
+              </select>
+            </div>
             <input type="text" id="analyze-input" placeholder="영상에 대해 질문하세요...">
             <button id="btn-analyze" class="btn btn-primary">분석</button>
           </div>

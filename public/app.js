@@ -438,6 +438,20 @@ function updateAnalyzeVideoSelect() {
   if (currentValue && readyVideos.some((v) => v.assetId === currentValue)) {
     analyzeVideoSelect.value = currentValue;
   }
+  updateAnalyzeThumb();
+}
+
+function updateAnalyzeThumb() {
+  const thumbEl = document.getElementById('analyze-thumb');
+  const selected = videosCache.find((v) => v.assetId === analyzeVideoSelect.value);
+  if (selected && selected.thumbnailUrl) {
+    thumbEl.innerHTML = `<img src="${selected.thumbnailUrl}" alt="">`;
+  } else {
+    thumbEl.innerHTML = '<div class="analyze-thumb-placeholder"></div>';
+  }
+  const hasSelection = !!analyzeVideoSelect.value;
+  analyzeInput.disabled = !hasSelection;
+  document.getElementById('btn-analyze').disabled = !hasSelection;
 }
 
 async function executeAnalyze() {
@@ -726,6 +740,8 @@ searchInput.addEventListener('keydown', (e) => {
 analyzeInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') executeAnalyze();
 });
+
+analyzeVideoSelect.addEventListener('change', updateAnalyzeThumb);
 
 document.querySelectorAll('.modal-cancel').forEach((btn) => {
   btn.addEventListener('click', closeModals);
