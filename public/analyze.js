@@ -8,6 +8,10 @@ const analyzeResults = document.getElementById('analyze-results');
 let chatHistory = [];
 
 document.getElementById('btn-export-chat').addEventListener('click', exportChat);
+document.getElementById('btn-reset-chat').addEventListener('click', () => {
+  if (chatHistory.length === 0) return;
+  resetChat();
+});
 
 function exportChat() {
   if (!chatHistory.length) return;

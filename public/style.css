@@ -700,8 +700,13 @@ body {
   white-space: nowrap;
 }
 
-.btn-export {
+.btn-reset {
   margin-left: auto;
+  font-size: 1rem;
+  padding: 4px 8px;
+}
+
+.btn-export {
   font-size: 0.78rem;
   white-space: nowrap;
 }
