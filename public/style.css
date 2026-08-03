@@ -1245,6 +1245,11 @@ body {
   flex-shrink: 0;
 }
 
+.toast-error .toast-icon {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .toast.toast-out {
   animation: toast-out 0.3s ease forwards;
 }

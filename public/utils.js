@@ -32,11 +32,12 @@ export function showAlert(message, title = '알림') {
   openModal('modal-alert');
 }
 
-export function showToast(message) {
+export function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.innerHTML = `<span class="toast-icon">&#10003;</span><span>${escapeHtml(message)}</span>`;
+  toast.className = `toast toast-${type}`;
+  const icon = type === 'error' ? '&#10007;' : '&#10003;';
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${escapeHtml(message)}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.classList.add('toast-out');
