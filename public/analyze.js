@@ -34,12 +34,18 @@ export function selectVideoForAnalysis(video) {
     resetChat();
   }
   state.selectedAnalyzeVideo = video;
+  if (chatHistory.length === 0) {
+    analyzeResults.innerHTML = '<p class="placeholder-text">아래의 입력창에서 영상에 대해 질문하세요.</p>';
+  }
   updateAnalyzeIndicator();
 }
 
 export function resetChat() {
   chatHistory = [];
-  analyzeResults.innerHTML = '<p class="placeholder-text">사이드바에서 영상을 선택한 뒤 질문하세요.</p>';
+  const message = state.selectedAnalyzeVideo
+    ? '아래의 입력창에서 영상에 대해 질문하세요.'
+    : '사이드바에서 영상을 선택한 뒤 질문하세요.';
+  analyzeResults.innerHTML = `<p class="placeholder-text">${message}</p>`;
 }
 
 export function updateAnalyzeIndicator() {
