@@ -380,6 +380,13 @@ export async function deleteVideo() {
       { method: 'DELETE' }
     );
     if (!res.ok) throw new Error('삭제 실패');
+    if (state.selectedAnalyzeVideo && state.selectedAnalyzeVideo.id === state.deleteTarget) {
+      state.selectedAnalyzeVideo = null;
+      import('./analyze.js').then(({ resetChat, updateAnalyzeIndicator }) => {
+        resetChat();
+        updateAnalyzeIndicator();
+      });
+    }
     state.deleteTarget = null;
     closeModals();
     loadVideos();
