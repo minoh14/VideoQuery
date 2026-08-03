@@ -11,10 +11,10 @@
   <section id="login-view" class="view active">
     <div class="login-container">
       <h1 class="login-title">VideoQuery</h1>
-      <p class="login-subtitle">TwelveLabs API Key와 이름을 입력하세요</p>
+      <p class="login-subtitle">API Key는 서버 세션에만 보관되며 브라우저에 저장되지 않습니다</p>
       <div class="login-form">
-        <input type="text" id="input-login-name" placeholder="이름" autocomplete="off">
-        <input type="password" id="input-login-apikey" placeholder="TwelveLabs API Key">
+        <input type="text" id="input-login-name" placeholder="이름" autocomplete="name" maxlength="80">
+        <input type="password" id="input-login-apikey" placeholder="TwelveLabs API Key" autocomplete="off" maxlength="512" spellcheck="false">
         <button id="btn-login" class="btn btn-primary login-btn">로그인</button>
         <p id="login-error" class="login-error hidden"></p>
       </div>

@@ -1,26 +1,15 @@
-const SESSION_KEY = 'videoquery_session';
+let currentSession = null;
 
 export function getSession() {
-  const raw = sessionStorage.getItem(SESSION_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  return currentSession;
 }
 
-export function setSession(name, apiKey) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ name, apiKey }));
+export function setSession(name) {
+  currentSession = { name };
 }
 
 export function clearSession() {
-  sessionStorage.removeItem(SESSION_KEY);
-}
-
-export function getApiKey() {
-  const session = getSession();
-  return session?.apiKey || '';
+  currentSession = null;
 }
 
 export function getUserName() {
@@ -28,13 +17,52 @@ export function getUserName() {
   return session?.name || '';
 }
 
-export async function apiFetch(url, options = {}) {
-  const apiKey = getApiKey();
-  const headers = { ...(options.headers || {}) };
-  if (apiKey) {
-    headers['x-api-key'] = apiKey;
+export async function login(name, apiKey) {
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, apiKey }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.authenticated) {
+    throw new Error(data.error || '로그인에 실패했습니다.');
   }
-  const res = await fetch(url, { ...options, headers });
+  setSession(data.user.name);
+  return currentSession;
+}
+
+export async function restoreSession() {
+  try {
+    const res = await fetch('/api/auth/session', { credentials: 'same-origin' });
+    if (!res.ok) {
+      clearSession();
+      return null;
+    }
+    const data = await res.json();
+    setSession(data.user.name);
+    return currentSession;
+  } catch {
+    clearSession();
+    return null;
+  }
+}
+
+export async function logout() {
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+  } catch {
+    // The local session should still be cleared if the server is unreachable.
+  } finally {
+    clearSession();
+  }
+}
+
+export async function apiFetch(url, options = {}) {
+  const res = await fetch(url, { ...options, credentials: 'same-origin' });
   if (res.status === 401) {
     clearSession();
     document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));

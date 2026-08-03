@@ -1,11 +1,11 @@
-import { API, state } from './state.js';
+import { state } from './state.js';
 import { openModal, closeModals } from './utils.js';
 import { loadProjects, createProject, renameProject, deleteProject } from './projects.js';
 import { goToProjects } from './navigation.js';
 import { loadVideos, uploadVideo, deleteVideo, closeVideoPreview } from './videos.js';
 import { executeSearch } from './search.js';
 import { executeAnalyze } from './analyze.js';
-import { getSession, setSession, clearSession, getUserName, apiFetch } from './auth.js';
+import { getUserName, login, logout, restoreSession } from './auth.js';
 
 // --- Theme Toggle ---
 
@@ -214,24 +214,13 @@ async function handleLogin() {
   loginBtn.textContent = '확인 중...';
 
   try {
-    const res = await fetch(`${API}/api/auth/verify`, {
-      method: 'POST',
-      headers: { 'x-api-key': apiKey },
-    });
-    const data = await res.json();
-
-    if (!res.ok || !data.valid) {
-      errorEl.textContent = data.error || '유효하지 않은 API Key입니다.';
-      errorEl.classList.remove('hidden');
-      return;
-    }
-
-    setSession(name, apiKey);
+    await login(name, apiKey);
+    apiKeyInput.value = '';
     updateUserDisplay();
     showView('projects-view');
     loadProjects();
   } catch (err) {
-    errorEl.textContent = '서버에 연결할 수 없습니다.';
+    errorEl.textContent = err.message || '서버에 연결할 수 없습니다.';
     errorEl.classList.remove('hidden');
   } finally {
     loginBtn.disabled = false;
@@ -239,8 +228,8 @@ async function handleLogin() {
   }
 }
 
-function handleLogout() {
-  clearSession();
+async function handleLogout() {
+  await logout();
   showView('login-view');
   document.getElementById('input-login-name').value = '';
   document.getElementById('input-login-apikey').value = '';
@@ -256,10 +245,15 @@ document.getElementById('input-login-name').addEventListener('keydown', (e) => {
 document.getElementById('btn-logout').addEventListener('click', handleLogout);
 
 // --- Init ---
-if (getSession()) {
-  updateUserDisplay();
-  showView('projects-view');
-  loadProjects();
-} else {
-  showView('login-view');
+async function initializeApp() {
+  const session = await restoreSession();
+  if (session) {
+    updateUserDisplay();
+    showView('projects-view');
+    loadProjects();
+  } else {
+    showView('login-view');
+  }
 }
+
+initializeApp();

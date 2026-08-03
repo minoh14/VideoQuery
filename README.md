@@ -5,7 +5,7 @@
 ### 확정된 결정 사항
 - **제품명**: **VideoQuery**. (상표·도메인 충돌은 실제 발생 시점에 대응하기로 함.)
 - **백엔드/스택**: Node.js (API Routes, 단일 코드베이스). API 키는 서버 사이드에만 보관.
-- **인증**: v1은 단일 사용자, 로그인 없음.
+- **인증**: v1은 단일 사용자용 BYOK 연결 방식. TwelveLabs API 키는 로그인 시 서버 메모리 세션에만 저장하고, 브라우저에는 `HttpOnly` 세션 쿠키만 보관.
 - **인덱스 구조**: **프로젝트 = TwelveLabs 인덱스 1개**. 사용자는 프로젝트를 여러 개 만들고, 검색/분석은 선택한 프로젝트 범위에서 동작.
 - **모델**: 검색 = **Marengo 3.0**(인덱스에 활성화, 인덱싱 필요). 분석 = **Pegasus 1.5**(호출별 온더플라이, 사전 인덱싱 불필요).
 - **업로드 방식**: **공개 URL 업로드만** 지원. (로컬 파일/멀티파트는 이후 고려.)
@@ -22,7 +22,7 @@
 
 ### 1.2 범위 (v1)
 - **필수**: 프로젝트 생성/선택, 영상 업로드, 영상 목록 조회, 영상 삭제, 자연어 쿼리(검색 + 분석)
-- **단일 사용자**: 로그인/권한 없음. 앱을 쓰는 주체가 곧 소유자.
+- **단일 사용자**: 별도 계정·권한 시스템은 없으며, 유효한 TwelveLabs API 키로 서버 세션을 생성한다.
 - **비범위 (이후 고려)**: 사용자 인증/멀티테넌시, 임베딩 기반 커스텀 검색, 영상 편집, 다국어 UI
 
 ### 1.3 핵심 외부 의존성
@@ -87,7 +87,7 @@ TwelveLabs 플랫폼. Python 또는 Node.js SDK, 혹은 REST API(`https://api.tw
 [TwelveLabs 플랫폼]  (Index / Asset / Indexed Asset)
 ```
 
-**핵심 원칙**: TwelveLabs API 키는 절대 브라우저로 노출하지 않는다. 모든 호출은 백엔드를 경유하는 프록시 구조로 한다.
+**핵심 원칙**: TwelveLabs API 키는 로그인 요청에서 서버로 전달된 뒤 서버 메모리 세션에만 보관한다. 브라우저 저장소에는 키를 남기지 않으며, 이후 요청은 `HttpOnly`, `SameSite=Strict` 세션 쿠키로 인증한다. 모든 TwelveLabs 호출은 백엔드를 경유한다.
 
 **확정 스택**:
 - 프론트엔드 + 백엔드: **Vanilla JavaScript** (API Routes). 프론트·백엔드가 한 언어·한 코드베이스.
@@ -100,13 +100,15 @@ TwelveLabs 플랫폼. Python 또는 Node.js SDK, 혹은 REST API(`https://api.tw
 
 ```
 VideoQuery/
-├── .env.example              # 환경변수 템플릿 (TWELVELABS_API_KEY, PORT)
+├── .env.example              # 환경변수 템플릿 (PORT, 세션 설정)
 ├── .gitignore
 ├── package.json
 ├── server.js                 # Express 진입점, 미들웨어, 정적 파일 서빙, 에러 핸들링
 ├── lib/
-│   └── twelvelabs-client.js  # TwelvelabsApiClient 싱글턴 인스턴스
+│   ├── twelvelabs-client.js  # TwelvelabsApiClient 생성
+│   └── session-store.js      # API 키를 보관하는 서버 메모리 세션
 ├── routes/
+│   ├── auth.js               # 로그인, 세션 확인, 로그아웃
 │   ├── projects.js           # POST /api/projects, GET /api/projects
 │   ├── videos.js             # POST/GET/DELETE /api/videos, GET /api/videos/:id/status
 │   ├── search.js             # POST /api/search
@@ -142,6 +144,9 @@ VideoQuery/
 
 | 앱 엔드포인트                  | 설명                         | TwelveLabs SDK 호출                                                                                                                    |
 | ------------------------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/auth/login`         | API 키 검증 및 서버 세션 생성 | `client.indexes.list(...)`로 키 검증 후 `HttpOnly` 쿠키 발급                                                                           |
+| `GET /api/auth/session`        | 현재 세션 확인                | 외부 호출 없음                                                                                                                         |
+| `POST /api/auth/logout`        | 서버 세션 삭제                | 외부 호출 없음                                                                                                                         |
 | `POST /api/projects`           | 프로젝트 생성(= 인덱스 생성) | `client.indexes.create(index_name, models=[{marengo3.0}])` (검색용. Pegasus는 인덱스에 넣지 않고 호출별로 사용)                        |
 | `GET  /api/projects`           | 프로젝트 목록                | 인덱스 목록 조회(실시간)                                                                                                               |
 | `POST /api/videos`             | 영상 업로드 시작(URL)        | `client.assets.create(method="url", url=...)`                                                                                          |
@@ -231,7 +236,8 @@ TwelveLabs 상태를 UI 배지로 매핑한다. 자산이 준비되면 분석은
 ## 9. 비기능 요구사항
 
 ### 9.1 보안
-- TwelveLabs API 키는 서버 환경변수로만 관리, 클라이언트 노출 금지.
+- TwelveLabs API 키는 로그인 요청 직후 서버 메모리 세션에만 보관하고 브라우저 저장소에는 남기지 않는다.
+- 세션 쿠키는 `HttpOnly`, `SameSite=Strict`를 적용하며 운영 환경에서는 `Secure`를 강제한다.
 - 삭제 등 파괴적 작업은 확인 절차 필수.
 
 ### 9.2 에러 처리
@@ -262,7 +268,7 @@ SDK 예외를 앱 응답 코드로 매핑한다.
 
 ### 결정됨
 - ~~인덱스 구조~~ → **프로젝트 = 인덱스 1개**
-- ~~인증/멀티유저~~ → **v1 단일 사용자, 인증 없음**
+- ~~계정/멀티유저~~ → **v1 단일 사용자, API 키 기반 서버 세션만 사용**
 - ~~백엔드 언어~~ → **Node.js (Node.js SDK)**
 - ~~분석 모델~~ → **Pegasus 1.5 (온더플라이, 인덱싱 불필요)**; 검색 = Marengo 3.0
 - ~~대용량 업로드~~ → **v1은 공개 URL 업로드만** (로컬/멀티파트는 이후)
