@@ -1,5 +1,5 @@
 import { API, state } from './state.js';
-import { escapeHtml, formatDuration, openModal, closeModals } from './utils.js';
+import { escapeHtml, formatDuration, openModal, closeModals, showAlert } from './utils.js';
 import { apiFetch } from './auth.js';
 
 function formatDate(dateStr) {
@@ -125,7 +125,7 @@ export async function renameProject() {
     closeModals();
     loadProjects();
   } catch (err) {
-    alert('프로젝트 이름 변경에 실패했습니다.');
+    showAlert('프로젝트 이름 변경에 실패했습니다.');
   } finally {
     btn.disabled = false;
   }
@@ -146,7 +146,7 @@ export async function deleteProject() {
     closeModals();
     loadProjects();
   } catch (err) {
-    alert('프로젝트 삭제에 실패했습니다.');
+    showAlert('프로젝트 삭제에 실패했습니다.');
   } finally {
     btn.disabled = false;
   }
@@ -171,7 +171,7 @@ export async function createProject() {
     closeModals();
     loadProjects();
   } catch (err) {
-    alert('프로젝트 생성에 실패했습니다.');
+    showAlert('프로젝트 생성에 실패했습니다.');
   } finally {
     btn.disabled = false;
   }

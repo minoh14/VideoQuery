@@ -384,7 +384,7 @@ export async function deleteVideo() {
     closeModals();
     loadVideos();
   } catch (err) {
-    alert('영상 삭제에 실패했습니다.');
+    showAlert('영상 삭제에 실패했습니다.');
   } finally {
     btn.disabled = false;
   }
