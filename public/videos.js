@@ -1,5 +1,5 @@
 import { API, state } from './state.js';
-import { escapeHtml, formatDuration, openModal, closeModals, showToast } from './utils.js';
+import { escapeHtml, formatDuration, openModal, closeModals, showToast, showAlert } from './utils.js';
 import { selectVideoForAnalysis } from './analyze.js';
 import { apiFetch } from './auth.js';
 
@@ -314,7 +314,7 @@ async function uploadVideoByUrl() {
   } catch (err) {
     state.pendingUploads = state.pendingUploads.filter((p) => p !== pending);
     loadVideos();
-    alert('영상 추가에 실패했습니다.');
+    showAlert('영상 추가에 실패했습니다.');
   } finally {
     btn.disabled = false;
   }

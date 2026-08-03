@@ -26,6 +26,12 @@ export function closeModals() {
   document.querySelectorAll('.modal-overlay').forEach((m) => m.classList.add('hidden'));
 }
 
+export function showAlert(message, title = '알림') {
+  document.getElementById('modal-alert-title').textContent = title;
+  document.getElementById('modal-alert-message').textContent = message;
+  openModal('modal-alert');
+}
+
 export function showToast(message) {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
