@@ -284,6 +284,11 @@ async function uploadVideoByUrl() {
   const url = urlInput.value.trim();
   if (!url) return;
 
+  if (/(?:youtube\.com|youtu\.be)/.test(url)) {
+    showAlert('유튜브 영상은 업로드할 수 없습니다.');
+    return;
+  }
+
   const btn = document.getElementById('btn-upload-video');
   btn.disabled = true;
 
