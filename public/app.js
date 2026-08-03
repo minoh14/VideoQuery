@@ -155,6 +155,22 @@ document.getElementById('analyze-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') executeAnalyze();
 });
 
+document.getElementById('input-project-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') createProject();
+});
+
+document.getElementById('input-rename-project').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') renameProject();
+});
+
+document.getElementById('input-video-url').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') uploadVideo();
+});
+
+document.getElementById('input-video-title').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') uploadVideo();
+});
+
 document.querySelectorAll('.modal-cancel').forEach((btn) => {
   btn.addEventListener('click', closeModals);
 });
