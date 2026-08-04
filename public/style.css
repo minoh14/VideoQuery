@@ -300,6 +300,28 @@ body {
   font-size: 0.875rem;
 }
 
+.video-filter-input {
+  width: 100%;
+  padding: 8px 12px;
+  margin: 8px 0;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  font-size: 0.825rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+  flex-shrink: 0;
+}
+
+.video-filter-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.video-filter-input.hidden {
+  display: none;
+}
+
 #video-list {
   list-style: none;
   flex: 1;

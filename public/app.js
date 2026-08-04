@@ -79,6 +79,8 @@ document.getElementById('tab-search').addEventListener('click', () => {
   document.getElementById('tab-analyze').classList.remove('active');
   document.getElementById('panel-search').classList.add('active');
   document.getElementById('panel-analyze').classList.remove('active');
+  document.getElementById('video-filter-input').classList.add('hidden');
+  document.getElementById('video-filter-input').value = '';
   loadVideos();
 });
 
@@ -87,6 +89,7 @@ document.getElementById('tab-analyze').addEventListener('click', () => {
   document.getElementById('tab-search').classList.remove('active');
   document.getElementById('panel-analyze').classList.add('active');
   document.getElementById('panel-search').classList.remove('active');
+  document.getElementById('video-filter-input').classList.remove('hidden');
   loadVideos();
 });
 
@@ -145,6 +148,10 @@ dropArea.addEventListener('drop', (e) => {
       document.getElementById('file-drop-name').textContent = `${files.length}개 파일 선택됨`;
     }
   }
+});
+
+document.getElementById('video-filter-input').addEventListener('input', () => {
+  loadVideos();
 });
 
 document.getElementById('search-input').addEventListener('keydown', (e) => {

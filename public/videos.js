@@ -22,6 +22,12 @@ function renderVideos(videos, totalResults) {
   state.videosCache = videos;
   updateAnalyzeVideoSelect();
 
+  const filterInput = document.getElementById('video-filter-input');
+  const filterText = filterInput && !filterInput.classList.contains('hidden') ? filterInput.value.trim().toLowerCase() : '';
+  if (filterText) {
+    videos = videos.filter((v) => (v.filename || '').toLowerCase().includes(filterText));
+  }
+
   const unacknowledgedPending = state.pendingUploads.filter((p) => !p.assetId);
   const totalCount = totalResults + unacknowledgedPending.length;
   const totalDuration = state.currentProject ? (state.currentProject.totalDuration || 0) : 0;
