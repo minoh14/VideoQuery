@@ -1,7 +1,8 @@
 import { API, state } from './state.js';
 import { escapeHtml, formatTime } from './utils.js';
-import { closeVideoPreview } from './videos.js';
+import { closeVideoPreview, navigateToVideoPage } from './videos.js';
 import { apiFetch } from './auth.js';
+import { selectVideoForAnalysis, updateAnalyzeIndicator } from './analyze.js';
 
 const searchInput = document.getElementById('search-input');
 const searchResults = document.getElementById('search-results');
@@ -135,7 +136,14 @@ function renderSearchResults(clips) {
   clips.forEach((clip, i) => {
     const key = clip.videoId;
     if (!grouped.has(key)) {
-      grouped.set(key, { title: clip.videoTitle || clip.videoId, duration: clip.videoDuration, clips: [] });
+      grouped.set(key, {
+        title: clip.videoTitle || clip.videoId,
+        duration: clip.videoDuration,
+        assetId: clip.assetId,
+        thumbnailUrl: clip.videoThumbnailUrl,
+        hlsUrl: clip.hlsUrl,
+        clips: [],
+      });
     }
     grouped.get(key).clips.push({ ...clip, _index: i });
   });
@@ -178,9 +186,16 @@ function renderSearchResults(clips) {
       </div>`;
     }).join('');
 
+    const analyzeBtn = group.assetId
+      ? `<button class="btn-analyze-video" data-video-id="${videoId}" data-asset-id="${group.assetId}" data-filename="${escapeHtml(group.title)}" data-duration="${group.duration || ''}" data-thumbnail="${group.thumbnailUrl || ''}" data-hls-url="${group.hlsUrl || ''}">이 영상 분석하기</button>`
+      : '';
+
     html += `
     <div class="video-group">
-      <div class="video-group-header">${escapeHtml(group.title)}</div>
+      <div class="video-group-header">
+        <span class="video-group-title">${escapeHtml(group.title)}</span>
+        ${analyzeBtn}
+      </div>
       ${timelineHtml}
       <div class="video-group-clips">${clipsHtml}</div>
     </div>`;
@@ -199,6 +214,24 @@ function renderSearchResults(clips) {
     seg.addEventListener('click', () => {
       const idx = parseInt(seg.dataset.clipIndex);
       playClipInModal(clips[idx]);
+    });
+  });
+
+  searchResults.querySelectorAll('.btn-analyze-video').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const video = {
+        id: btn.dataset.videoId,
+        assetId: btn.dataset.assetId,
+        filename: btn.dataset.filename,
+        duration: btn.dataset.duration ? parseFloat(btn.dataset.duration) : null,
+        thumbnailUrl: btn.dataset.thumbnail || null,
+        hlsUrl: btn.dataset.hlsUrl || null,
+        status: 'ready',
+      };
+      selectVideoForAnalysis(video);
+      updateAnalyzeIndicator();
+      document.getElementById('tab-analyze').click();
+      await navigateToVideoPage(video.id);
     });
   });
 }

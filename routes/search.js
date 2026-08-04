@@ -47,7 +47,13 @@ router.post('/', upload.single('image'), async (req, res, next) => {
       videoIds.map(async (id) => {
         try {
           const asset = await req.tlClient.indexes.indexedAssets.retrieve(indexId, id);
-          assetMap[id] = { hlsUrl: asset.hls?.videoUrl || null, duration: asset.metadata?.duration || null };
+          assetMap[id] = {
+            hlsUrl: asset.hls?.videoUrl || null,
+            duration: asset.metadata?.duration || null,
+            assetId: asset.assetId || null,
+            filename: asset.systemMetadata?.filename || null,
+            thumbnailUrl: asset.hls?.thumbnailUrls?.[0] || null,
+          };
         } catch (e) {}
       })
     );
@@ -55,6 +61,9 @@ router.post('/', upload.single('image'), async (req, res, next) => {
       const info = assetMap[clip.videoId] || {};
       clip.hlsUrl = info.hlsUrl || null;
       clip.videoDuration = info.duration || null;
+      clip.assetId = info.assetId || null;
+      clip.videoTitle = info.filename || null;
+      clip.videoThumbnailUrl = info.thumbnailUrl || null;
     });
 
     res.json({ clips });

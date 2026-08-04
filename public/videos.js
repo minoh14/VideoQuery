@@ -154,11 +154,20 @@ function renderVideos(videos, totalResults) {
 }
 
 function updateAnalyzeVideoSelect() {
-  if (state.selectedAnalyzeVideo && !state.videosCache.some((v) => v.id === state.selectedAnalyzeVideo.id && v.status === 'ready')) {
-    state.selectedAnalyzeVideo = null;
-  }
-  // Lazy import to avoid circular dependency at module load
   import('./analyze.js').then(({ updateAnalyzeIndicator }) => updateAnalyzeIndicator());
+}
+
+export async function navigateToVideoPage(videoId) {
+  if (!state.currentProject) return;
+  const res = await apiFetch(`${API}/api/videos/statuses?indexId=${state.currentProject.id}`);
+  const data = await res.json();
+  const statuses = data.statuses || [];
+  const idx = statuses.findIndex((v) => v.id === videoId);
+  if (idx === -1) return;
+  const pageLimit = 10;
+  const targetPage = Math.floor(idx / pageLimit) + 1;
+  state.videoPage = targetPage;
+  await loadVideos();
 }
 
 export function showVideoPreview(video) {
