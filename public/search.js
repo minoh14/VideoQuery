@@ -143,6 +143,8 @@ function renderSearchResults(clips) {
     return;
   }
 
+  clips.sort((a, b) => (a.rank || Infinity) - (b.rank || Infinity));
+
   const grouped = new Map();
   clips.forEach((clip, i) => {
     const key = clip.videoId;
@@ -190,7 +192,10 @@ function renderSearchResults(clips) {
             <div class="clip-play-icon">&#9654;</div>
           </div>
           <div class="clip-meta">
-            <span class="clip-time">${formatTime(clip.start)} – ${formatTime(clip.end)}</span>
+            <div class="clip-meta-row">
+              <span class="clip-time">${formatTime(clip.start)} – ${formatTime(clip.end)}</span>
+              ${clip.rank ? `<span class="clip-confidence">#${clip.rank}</span>` : ''}
+            </div>
             ${clip.transcription ? `<p class="clip-transcription">${escapeHtml(clip.transcription)}</p>` : ''}
           </div>
         </div>

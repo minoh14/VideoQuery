@@ -893,6 +893,18 @@ body {
   color: var(--text-secondary);
 }
 
+.clip-card .clip-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.clip-card .clip-confidence {
+  font-size: 0.7rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .clip-card .clip-title {
   font-size: 0.85rem;
   font-weight: 500;

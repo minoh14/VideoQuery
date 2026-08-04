@@ -34,7 +34,7 @@ router.post('/', upload.single('image'), async (req, res, next) => {
 
     const clips = (result.data || []).map((item) => ({
       videoId: item.videoId,
-      score: item.rank,
+      rank: item.rank || null,
       start: item.start,
       end: item.end,
       thumbnailUrl: item.thumbnailUrl,
