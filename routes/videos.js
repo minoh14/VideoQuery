@@ -94,15 +94,16 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const { indexId, page = '1', pageLimit = '10', sortBy } = req.query;
+    const { indexId, page = '1', pageLimit = '10', sortBy, filter } = req.query;
     if (!indexId) {
       return res.status(400).json({ error: 'indexId query parameter is required' });
     }
 
     const pageNum = Math.max(1, parseInt(page));
     const limit = Math.min(10, Math.max(1, parseInt(pageLimit)));
+    const needsFullFetch = (sortBy && sortBy !== 'newest') || filter;
 
-    if (sortBy && sortBy !== 'newest') {
+    if (needsFullFetch) {
       const allVideos = [];
       let p = 1;
       while (true) {
@@ -125,20 +126,28 @@ router.get('/', async (req, res, next) => {
         p++;
       }
 
-      allVideos.sort((a, b) => {
-        switch (sortBy) {
-          case 'oldest': return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
-          case 'name': return (a.filename || '').localeCompare(b.filename || '');
-          case 'longest': return (b.duration || 0) - (a.duration || 0);
-          case 'shortest': return (a.duration || 0) - (b.duration || 0);
-          default: return 0;
-        }
-      });
+      let filtered = allVideos;
+      if (filter) {
+        const keyword = filter.toLowerCase();
+        filtered = allVideos.filter((v) => (v.filename || '').toLowerCase().includes(keyword));
+      }
 
-      const totalResults = allVideos.length;
+      if (sortBy && sortBy !== 'newest') {
+        filtered.sort((a, b) => {
+          switch (sortBy) {
+            case 'oldest': return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+            case 'name': return (a.filename || '').localeCompare(b.filename || '');
+            case 'longest': return (b.duration || 0) - (a.duration || 0);
+            case 'shortest': return (a.duration || 0) - (b.duration || 0);
+            default: return 0;
+          }
+        });
+      }
+
+      const totalResults = filtered.length;
       const totalPageCount = Math.ceil(totalResults / limit) || 1;
       const start = (pageNum - 1) * limit;
-      const videos = allVideos.slice(start, start + limit);
+      const videos = filtered.slice(start, start + limit);
 
       return res.json({
         videos,

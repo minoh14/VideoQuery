@@ -10,12 +10,16 @@ export async function loadVideos() {
 
   try {
     const sortBy = document.getElementById('video-sort').value;
+    const filterInput = document.getElementById('video-filter-input');
+    const filterText = filterInput && !filterInput.classList.contains('hidden') ? filterInput.value.trim() : '';
+
     const params = new URLSearchParams({
       indexId: state.currentProject.id,
       page: state.videoPage,
       pageLimit: 10,
     });
     if (sortBy && sortBy !== 'newest') params.set('sortBy', sortBy);
+    if (filterText) params.set('filter', filterText);
 
     const res = await apiFetch(`${API}/api/videos?${params}`);
     const data = await res.json();
@@ -29,12 +33,6 @@ export async function loadVideos() {
 function renderVideos(videos, totalResults) {
   state.videosCache = videos;
   updateAnalyzeVideoSelect();
-
-  const filterInput = document.getElementById('video-filter-input');
-  const filterText = filterInput && !filterInput.classList.contains('hidden') ? filterInput.value.trim().toLowerCase() : '';
-  if (filterText) {
-    videos = videos.filter((v) => (v.filename || '').toLowerCase().includes(filterText));
-  }
 
   const unacknowledgedPending = state.pendingUploads.filter((p) => !p.assetId);
   const totalCount = totalResults + unacknowledgedPending.length;

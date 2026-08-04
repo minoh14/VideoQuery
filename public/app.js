@@ -151,6 +151,7 @@ dropArea.addEventListener('drop', (e) => {
 });
 
 document.getElementById('video-filter-input').addEventListener('input', () => {
+  state.videoPage = 1;
   loadVideos();
 });
 
