@@ -94,13 +94,62 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const { indexId, page = '1', pageLimit = '10' } = req.query;
+    const { indexId, page = '1', pageLimit = '10', sortBy } = req.query;
     if (!indexId) {
       return res.status(400).json({ error: 'indexId query parameter is required' });
     }
 
     const pageNum = Math.max(1, parseInt(page));
     const limit = Math.min(10, Math.max(1, parseInt(pageLimit)));
+
+    if (sortBy && sortBy !== 'newest') {
+      const allVideos = [];
+      let p = 1;
+      while (true) {
+        const result = await req.tlClient.indexes.indexedAssets.list(indexId, { page: p, pageLimit: 50 });
+        const items = result.data || [];
+        for (const item of items) {
+          allVideos.push({
+            id: item.id,
+            assetId: item.assetId,
+            filename: item.systemMetadata?.filename || null,
+            duration: item.systemMetadata?.duration || null,
+            status: item.status,
+            createdAt: item.createdAt,
+            hlsUrl: item.hls?.video_url || null,
+            thumbnailUrl: item.hls?.thumbnail_urls?.[0] || null,
+          });
+        }
+        const totalPage = result.response?.pageInfo?.totalPage || 1;
+        if (p >= totalPage) break;
+        p++;
+      }
+
+      allVideos.sort((a, b) => {
+        switch (sortBy) {
+          case 'oldest': return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+          case 'name': return (a.filename || '').localeCompare(b.filename || '');
+          case 'longest': return (b.duration || 0) - (a.duration || 0);
+          case 'shortest': return (a.duration || 0) - (b.duration || 0);
+          default: return 0;
+        }
+      });
+
+      const totalResults = allVideos.length;
+      const totalPageCount = Math.ceil(totalResults / limit) || 1;
+      const start = (pageNum - 1) * limit;
+      const videos = allVideos.slice(start, start + limit);
+
+      return res.json({
+        videos,
+        pageInfo: {
+          page: pageNum,
+          pageLimit: limit,
+          totalPage: totalPageCount,
+          totalResults,
+        },
+      });
+    }
 
     const result = await req.tlClient.indexes.indexedAssets.list(indexId, {
       page: pageNum,

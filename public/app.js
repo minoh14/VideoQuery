@@ -154,6 +154,11 @@ document.getElementById('video-filter-input').addEventListener('input', () => {
   loadVideos();
 });
 
+document.getElementById('video-sort').addEventListener('change', () => {
+  state.videoPage = 1;
+  loadVideos();
+});
+
 document.getElementById('search-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') executeSearch();
 });

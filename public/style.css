@@ -286,6 +286,14 @@ body {
   background: var(--accent);
 }
 
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .sidebar h3 {
   font-size: 0.875rem;
   color: var(--text-secondary);
@@ -298,6 +306,22 @@ body {
   font-weight: 400;
   color: var(--text-muted);
   font-size: 0.875rem;
+}
+
+.video-sort-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.video-sort-select:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .video-filter-input {

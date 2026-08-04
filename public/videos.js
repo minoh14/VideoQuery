@@ -9,7 +9,15 @@ export async function loadVideos() {
   if (!state.currentProject) return;
 
   try {
-    const res = await apiFetch(`${API}/api/videos?indexId=${state.currentProject.id}&page=${state.videoPage}&pageLimit=10`);
+    const sortBy = document.getElementById('video-sort').value;
+    const params = new URLSearchParams({
+      indexId: state.currentProject.id,
+      page: state.videoPage,
+      pageLimit: 10,
+    });
+    if (sortBy && sortBy !== 'newest') params.set('sortBy', sortBy);
+
+    const res = await apiFetch(`${API}/api/videos?${params}`);
     const data = await res.json();
     state.videoTotalPage = data.pageInfo?.totalPage || 1;
     renderVideos(data.videos, data.pageInfo?.totalResults || data.videos.length);

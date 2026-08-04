@@ -52,7 +52,16 @@
     </header>
     <div class="workspace-layout">
       <aside id="video-sidebar" class="sidebar">
-        <h3>영상 목록 <span id="video-count"></span></h3>
+        <div class="sidebar-header">
+          <h3>영상 목록 <span id="video-count"></span></h3>
+          <select id="video-sort" class="video-sort-select">
+            <option value="newest">최신순</option>
+            <option value="oldest">오래된순</option>
+            <option value="name">이름순</option>
+            <option value="longest">긴 순</option>
+            <option value="shortest">짧은 순</option>
+          </select>
+        </div>
         <input type="text" id="video-filter-input" class="video-filter-input hidden" placeholder="영상 검색...">
         <ul id="video-list"></ul>
         <div id="video-pagination" class="pagination"></div>
