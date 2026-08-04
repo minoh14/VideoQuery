@@ -9,6 +9,7 @@ const searchResults = document.getElementById('search-results');
 const imageInput = document.getElementById('input-search-image');
 const imageNameEl = document.getElementById('search-image-name');
 const btnRemoveImage = document.getElementById('btn-remove-image');
+const btnClearSearch = document.getElementById('btn-clear-search');
 const historyDropdown = document.getElementById('search-history-dropdown');
 
 const HISTORY_KEY_PREFIX = 'videoquery_search_history_';
@@ -56,9 +57,18 @@ function showHistory() {
 }
 
 searchInput.addEventListener('focus', showHistory);
-searchInput.addEventListener('input', showHistory);
+searchInput.addEventListener('input', () => {
+  showHistory();
+  btnClearSearch.classList.toggle('hidden', !searchInput.value);
+});
 searchInput.addEventListener('blur', () => {
   setTimeout(() => historyDropdown.classList.add('hidden'), 150);
+});
+
+btnClearSearch.addEventListener('click', () => {
+  searchInput.value = '';
+  btnClearSearch.classList.add('hidden');
+  searchResults.innerHTML = '<p class="placeholder-text">프로젝트 내 영상에서 장면을 검색합니다.</p>';
 });
 
 document.getElementById('btn-attach-image').addEventListener('click', () => imageInput.click());
@@ -90,6 +100,7 @@ export async function executeSearch() {
   if (!query && !searchImageFile) return;
   if (!state.currentProject) return;
   historyDropdown.classList.add('hidden');
+  btnClearSearch.classList.toggle('hidden', !query);
   if (query) saveSearchHistory(query);
 
   if (state.searchController) state.searchController.abort();

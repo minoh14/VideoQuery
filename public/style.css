@@ -715,6 +715,7 @@ body {
 
 .search-input-wrapper input {
   width: 100%;
+  padding-right: 30px;
 }
 
 .search-history-dropdown {
