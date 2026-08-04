@@ -10,8 +10,9 @@ export async function loadVideos() {
 
   try {
     const sortBy = document.getElementById('video-sort').value;
+    const filterWrapper = document.getElementById('video-filter-wrapper');
     const filterInput = document.getElementById('video-filter-input');
-    const filterText = filterInput && !filterInput.classList.contains('hidden') ? filterInput.value.trim() : '';
+    const filterText = filterInput && filterWrapper && !filterWrapper.classList.contains('hidden') ? filterInput.value.trim() : '';
 
     const params = new URLSearchParams({
       indexId: state.currentProject.id,

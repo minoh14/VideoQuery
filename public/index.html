@@ -62,7 +62,10 @@
             <option value="shortest">짧은 순</option>
           </select>
         </div>
-        <input type="text" id="video-filter-input" class="video-filter-input hidden" placeholder="영상 검색...">
+        <div id="video-filter-wrapper" class="video-filter-wrapper hidden">
+          <input type="text" id="video-filter-input" class="video-filter-input" placeholder="영상 검색...">
+          <button id="btn-clear-video-filter" class="btn-clear-filter hidden" type="button" title="검색어 지우기">&times;</button>
+        </div>
         <ul id="video-list"></ul>
         <div id="video-pagination" class="pagination"></div>
       </aside>
