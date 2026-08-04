@@ -7,6 +7,32 @@ const analyzeResults = document.getElementById('analyze-results');
 
 let chatHistory = [];
 
+function getChatStorageKey() {
+  if (!state.currentProject || !state.selectedAnalyzeVideo) return null;
+  return `videoquery_chat_${state.currentProject.id}_${state.selectedAnalyzeVideo.id}`;
+}
+
+function saveChat() {
+  const key = getChatStorageKey();
+  if (!key) return;
+  if (chatHistory.length === 0) {
+    localStorage.removeItem(key);
+  } else {
+    localStorage.setItem(key, JSON.stringify(chatHistory));
+  }
+}
+
+function loadChat() {
+  const key = getChatStorageKey();
+  if (!key) return [];
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
 document.getElementById('btn-export-chat').addEventListener('click', exportChat);
 document.getElementById('btn-reset-chat').addEventListener('click', () => {
   if (chatHistory.length === 0) return;
@@ -35,10 +61,13 @@ function exportChat() {
 
 export function selectVideoForAnalysis(video) {
   if (state.selectedAnalyzeVideo && state.selectedAnalyzeVideo.id !== video.id) {
-    resetChat();
+    saveChat();
   }
   state.selectedAnalyzeVideo = video;
-  if (chatHistory.length === 0) {
+  chatHistory = loadChat();
+  if (chatHistory.length > 0) {
+    renderChat();
+  } else {
     analyzeResults.innerHTML = '<p class="placeholder-text">아래의 입력창에서 영상에 대해 질문하세요.</p>';
   }
   updateAnalyzeIndicator();
@@ -46,6 +75,7 @@ export function selectVideoForAnalysis(video) {
 
 export function resetChat() {
   chatHistory = [];
+  saveChat();
   const message = state.selectedAnalyzeVideo
     ? '아래의 입력창에서 영상에 대해 질문하세요.'
     : '사이드바에서 영상을 선택한 뒤 질문하세요.';
@@ -109,10 +139,12 @@ export async function executeAnalyze() {
     if (signal.aborted) return;
     const answer = (data.text || '').trim();
     chatHistory.push({ role: 'assistant', content: answer || '분석 결과가 없습니다.' });
+    saveChat();
     renderChat();
   } catch (err) {
     if (err.name === 'AbortError') return;
     chatHistory.push({ role: 'assistant', content: `오류: ${err.message}` });
+    saveChat();
     renderChat();
   }
 }
