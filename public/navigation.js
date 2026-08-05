@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { loadProjects } from './projects.js';
 import { loadVideos, stopPolling, startPolling } from './videos.js';
 import { updateAnalyzeIndicator, resetChat } from './analyze.js';
+import { resetSearchState } from './search.js';
 
 const projectsView = document.getElementById('projects-view');
 const workspaceView = document.getElementById('workspace-view');
@@ -28,6 +29,7 @@ export function goToWorkspace(project) {
   state.allVideoStatuses = {};
   state.pendingUploads = [];
   workspaceTitle.textContent = project.name;
+  resetSearchState();
   searchResults.innerHTML = '<p class="placeholder-text">프로젝트 내 영상에서 장면을 검색합니다.</p>';
   resetChat();
   updateAnalyzeIndicator();

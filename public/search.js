@@ -11,11 +11,25 @@ const imageNameEl = document.getElementById('search-image-name');
 const btnRemoveImage = document.getElementById('btn-remove-image');
 const btnClearSearch = document.getElementById('btn-clear-search');
 const historyDropdown = document.getElementById('search-history-dropdown');
+const searchExportToolbar = document.getElementById('search-export-toolbar');
+const searchResultsCount = document.getElementById('search-results-count');
 
 const HISTORY_KEY_PREFIX = 'videoquery_search_history_';
 const MAX_HISTORY = 20;
 
 let searchImageFile = null;
+let currentSearchExport = null;
+
+function setSearchExportState(exportData) {
+  currentSearchExport = exportData;
+  const hasResults = Boolean(exportData?.clips?.length);
+  searchExportToolbar.classList.toggle('hidden', !hasResults);
+  searchResultsCount.textContent = hasResults ? `${exportData.clips.length}개 결과` : '';
+}
+
+export function resetSearchState() {
+  setSearchExportState(null);
+}
 
 function getHistoryKey() {
   return HISTORY_KEY_PREFIX + (state.currentProject?.id || 'global');
@@ -25,6 +39,16 @@ function getSearchHistory() {
   try {
     return JSON.parse(localStorage.getItem(getHistoryKey())) || [];
   } catch { return []; }
+}
+
+function formatLocalDateTime(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, '0');
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const absoluteOffset = Math.abs(offsetMinutes);
+  const offset = `${sign}${pad(Math.floor(absoluteOffset / 60))}:${pad(absoluteOffset % 60)}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `
+    + `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} GMT${offset}`;
 }
 
 function saveSearchHistory(query) {
@@ -68,7 +92,12 @@ searchInput.addEventListener('blur', () => {
 btnClearSearch.addEventListener('click', () => {
   searchInput.value = '';
   btnClearSearch.classList.add('hidden');
+  setSearchExportState(null);
   searchResults.innerHTML = '<p class="placeholder-text">프로젝트 내 영상에서 장면을 검색합니다.</p>';
+});
+
+document.querySelectorAll('.btn-export-search').forEach((button) => {
+  button.addEventListener('click', () => exportSearchResults(button.dataset.format));
 });
 
 document.getElementById('btn-attach-image').addEventListener('click', () => imageInput.click());
@@ -111,12 +140,14 @@ export async function executeSearch() {
     v.pause();
     v.src = '';
   });
+  setSearchExportState(null);
   searchResults.innerHTML = '<div class="loading"><span class="spinner"></span>검색 중...</div>';
 
   try {
     const formData = new FormData();
     formData.append('indexId', state.currentProject.id);
-    formData.append('searchOptions', JSON.stringify(getSearchOptions()));
+    const searchOptions = getSearchOptions();
+    formData.append('searchOptions', JSON.stringify(searchOptions));
     if (query) formData.append('query', query);
     if (searchImageFile) formData.append('image', searchImageFile);
 
@@ -128,22 +159,30 @@ export async function executeSearch() {
     if (!res.ok) throw new Error('검색 실패');
     const data = await res.json();
     if (signal.aborted) return;
-    renderSearchResults(data.clips);
+    renderSearchResults(data.clips, { query, searchOptions });
   } catch (err) {
     if (err.name === 'AbortError') return;
+    setSearchExportState(null);
     searchResults.innerHTML = `<p class="placeholder-text">오류: ${escapeHtml(err.message)}</p>`;
   }
 }
 
-function renderSearchResults(clips) {
+function renderSearchResults(clips, searchMeta = {}) {
   searchResults.innerHTML = '';
 
   if (!clips || !clips.length) {
+    setSearchExportState(null);
     searchResults.innerHTML = '<p class="placeholder-text">검색 결과가 없습니다.</p>';
     return;
   }
 
-  clips.sort((a, b) => (a.rank || Infinity) - (b.rank || Infinity));
+  clips = [...clips].sort((a, b) => (a.rank || Infinity) - (b.rank || Infinity));
+  setSearchExportState({
+    query: searchMeta.query || '',
+    searchOptions: searchMeta.searchOptions || [],
+    exportedAt: formatLocalDateTime(),
+    clips,
+  });
 
   const grouped = new Map();
   clips.forEach((clip, i) => {
@@ -250,6 +289,130 @@ function renderSearchResults(clips) {
       await navigateToVideoPage(video.id);
     });
   });
+}
+
+function normalizeSearchClip(clip) {
+  return {
+    rank: clip.rank ?? null,
+    videoId: clip.videoId || '',
+    videoTitle: clip.videoTitle || clip.videoId || '',
+    assetId: clip.assetId || null,
+    startSeconds: clip.start ?? null,
+    endSeconds: clip.end ?? null,
+    startTimestamp: formatTime(clip.start),
+    endTimestamp: formatTime(clip.end),
+    durationSeconds: clip.videoDuration ?? null,
+    transcription: clip.transcription || '',
+    thumbnailUrl: clip.thumbnailUrl || clip.videoThumbnailUrl || null,
+    hlsUrl: clip.hlsUrl || null,
+  };
+}
+
+function csvEscape(value) {
+  const text = value == null ? '' : String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function getExportRows() {
+  return currentSearchExport.clips.map(normalizeSearchClip);
+}
+
+function buildCsv(rows) {
+  const headers = [
+    'rank', 'video_id', 'video_title', 'asset_id',
+    'start_seconds', 'end_seconds', 'start_timestamp', 'end_timestamp',
+    'duration_seconds', 'transcription', 'thumbnail_url', 'hls_url',
+  ];
+  const lines = [headers.join(',')];
+  rows.forEach((row) => {
+    lines.push([
+      row.rank, row.videoId, row.videoTitle, row.assetId,
+      row.startSeconds, row.endSeconds, row.startTimestamp, row.endTimestamp,
+      row.durationSeconds, row.transcription, row.thumbnailUrl, row.hlsUrl,
+    ].map(csvEscape).join(','));
+  });
+  return `\uFEFF${lines.join('\r\n')}`;
+}
+
+function buildMarkdown(rows) {
+  const query = currentSearchExport.query || '(이미지 검색)';
+  const projectName = state.currentProject?.name || state.currentProject?.id || '';
+  const groups = new Map();
+  rows.forEach((row) => {
+    if (!groups.has(row.videoId)) groups.set(row.videoId, []);
+    groups.get(row.videoId).push(row);
+  });
+
+  const lines = [
+    '# VideoQuery 검색 결과',
+    '',
+    `- 프로젝트: ${projectName}`,
+    `- 검색어: ${query}`,
+    `- 검색 옵션: ${currentSearchExport.searchOptions.join(', ') || '-'}`,
+    `- 결과 수: ${rows.length}`,
+    `- 내보낸 시각: ${currentSearchExport.exportedAt}`,
+    '',
+  ];
+
+  for (const videoRows of groups.values()) {
+    lines.push(`## ${videoRows[0].videoTitle}`, '');
+    videoRows.forEach((row) => {
+      lines.push(`- **${row.startTimestamp} – ${row.endTimestamp}** (순위 #${row.rank ?? '-'})`);
+      if (row.transcription) lines.push(`  - 대사: ${row.transcription}`);
+    });
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+function buildJson(rows) {
+  return JSON.stringify({
+    project: {
+      id: state.currentProject?.id || null,
+      name: state.currentProject?.name || null,
+    },
+    query: currentSearchExport.query,
+    searchOptions: currentSearchExport.searchOptions,
+    exportedAt: currentSearchExport.exportedAt,
+    resultCount: rows.length,
+    results: rows,
+  }, null, 2);
+}
+
+function sanitizeFilename(value) {
+  return (value || 'videoquery-search')
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '-')
+    .slice(0, 80);
+}
+
+function downloadExport(content, filename, type) {
+  const blob = new Blob([content], { type: `${type};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function exportSearchResults(format) {
+  if (!currentSearchExport?.clips?.length) return;
+
+  const rows = getExportRows();
+  const baseName = sanitizeFilename(
+    `${state.currentProject?.name || 'project'}-${currentSearchExport.query || 'image-search'}`
+  );
+
+  if (format === 'csv') {
+    downloadExport(buildCsv(rows), `${baseName}.csv`, 'text/csv');
+  } else if (format === 'markdown') {
+    downloadExport(buildMarkdown(rows), `${baseName}.md`, 'text/markdown');
+  } else if (format === 'json') {
+    downloadExport(buildJson(rows), `${baseName}.json`, 'application/json');
+  }
 }
 
 function playClipInModal(clip) {

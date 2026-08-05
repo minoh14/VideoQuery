@@ -95,6 +95,15 @@
             </div>
             <button id="btn-search" class="btn btn-primary">검색</button>
           </div>
+          <div id="search-export-toolbar" class="search-results-toolbar hidden">
+            <span id="search-results-count" class="search-results-count"></span>
+            <div class="search-export-actions" aria-label="검색 결과 내보내기">
+              <span class="search-export-label">내보내기</span>
+              <button class="btn btn-ghost btn-export-search" data-format="csv" type="button">CSV</button>
+              <button class="btn btn-ghost btn-export-search" data-format="markdown" type="button">Markdown</button>
+              <button class="btn btn-ghost btn-export-search" data-format="json" type="button">JSON</button>
+            </div>
+          </div>
           <div id="search-results" class="results-area">
             <p class="placeholder-text">프로젝트 내 영상에서 장면을 검색합니다.</p>
           </div>
