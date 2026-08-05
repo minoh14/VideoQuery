@@ -83,6 +83,7 @@ document.getElementById('tab-search').addEventListener('click', () => {
   document.getElementById('video-filter-wrapper').classList.add('hidden');
   document.getElementById('video-filter-input').value = '';
   document.getElementById('btn-clear-video-filter').classList.add('hidden');
+  document.getElementById('bookmarks-panel').classList.remove('hidden');
   loadVideos();
 });
 
@@ -92,6 +93,7 @@ document.getElementById('tab-analyze').addEventListener('click', () => {
   document.getElementById('panel-analyze').classList.add('active');
   document.getElementById('panel-search').classList.remove('active');
   document.getElementById('video-filter-wrapper').classList.remove('hidden');
+  document.getElementById('bookmarks-panel').classList.add('hidden');
   loadVideos();
 });
 

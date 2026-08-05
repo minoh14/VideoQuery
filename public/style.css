@@ -989,6 +989,11 @@ body {
   font-weight: 600;
 }
 
+.clip-card .clip-time {
+  margin-left: auto;
+  margin-right: 8px;
+}
+
 .clip-card .clip-title {
   font-size: 0.85rem;
   font-weight: 500;
@@ -1048,6 +1053,10 @@ body {
   border-top: 1px solid var(--border);
   padding-top: 10px;
   flex-shrink: 0;
+}
+
+.bookmarks-panel.hidden {
+  display: none;
 }
 
 .bookmarks-panel summary {

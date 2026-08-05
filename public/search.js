@@ -364,8 +364,8 @@ function renderSearchResults(clips, searchMeta = {}) {
           </div>
           <div class="clip-meta">
             <div class="clip-meta-row">
-              <span class="clip-time">${formatTime(clip.start)} – ${formatTime(clip.end)}</span>
               ${clip.rank ? `<span class="clip-confidence">#${clip.rank}</span>` : ''}
+              <span class="clip-time">${formatTime(clip.start)} – ${formatTime(clip.end)}</span>
               <button class="btn-bookmark-clip${isBookmarked(clip) ? ' active' : ''}" data-index="${clip._index}" type="button" title="${isBookmarked(clip) ? '북마크 삭제' : '북마크 저장'}" aria-label="${isBookmarked(clip) ? '북마크 삭제' : '북마크 저장'}" aria-pressed="${isBookmarked(clip)}">${isBookmarked(clip) ? '&#9733;' : '&#9734;'}</button>
             </div>
             ${clip.transcription ? `<p class="clip-transcription">${escapeHtml(clip.transcription)}</p>` : ''}
