@@ -279,7 +279,6 @@ export function showVideoPreview(video) {
     const videoEl = document.createElement('video');
     videoEl.controls = true;
     videoEl.autoplay = true;
-    videoEl.style.width = '100%';
     videoEl.style.borderRadius = '8px';
     container.innerHTML = '';
     container.appendChild(videoEl);

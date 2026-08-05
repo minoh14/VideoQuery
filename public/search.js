@@ -915,7 +915,6 @@ function playClipInModal(clip) {
   const videoEl = document.createElement('video');
   videoEl.controls = true;
   videoEl.autoplay = true;
-  videoEl.style.width = '100%';
   videoEl.style.borderRadius = '8px';
   body.innerHTML = '';
   body.appendChild(videoEl);

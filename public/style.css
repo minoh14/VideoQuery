@@ -1328,12 +1328,18 @@ body {
 .modal-video-body {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
 }
 
 .modal-video-body video {
-  width: 100%;
-  max-height: 100%;
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: calc(90vh - 120px);
   object-fit: contain;
 }
 
@@ -1372,8 +1378,12 @@ body {
 }
 
 .modal-video-body .video-preview-thumbnail img {
-  width: 100%;
   display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: calc(90vh - 120px);
+  margin: 0 auto;
+  object-fit: contain;
 }
 
 .modal-video-body .video-preview-thumbnail .clip-play-icon {
@@ -2038,6 +2048,11 @@ body {
     max-width: 95vw;
     width: 95vw;
     max-height: 85vh;
+  }
+
+  .modal-video-body video,
+  .modal-video-body .video-preview-thumbnail img {
+    max-height: calc(85vh - 120px);
   }
 
   .modal {
