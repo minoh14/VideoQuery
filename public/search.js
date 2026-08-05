@@ -1,5 +1,5 @@
 import { API, state } from './state.js';
-import { escapeHtml, formatTime } from './utils.js';
+import { escapeHtml, formatTime, showToast } from './utils.js';
 import { closeVideoPreview, navigateToVideoPage } from './videos.js';
 import { apiFetch } from './auth.js';
 import { selectVideoForAnalysis, updateAnalyzeIndicator } from './analyze.js';
@@ -13,12 +13,16 @@ const btnClearSearch = document.getElementById('btn-clear-search');
 const historyDropdown = document.getElementById('search-history-dropdown');
 const searchExportToolbar = document.getElementById('search-export-toolbar');
 const searchResultsCount = document.getElementById('search-results-count');
+const bookmarkList = document.getElementById('bookmark-list');
+const bookmarkCount = document.getElementById('bookmark-count');
 
 const HISTORY_KEY_PREFIX = 'videoquery_search_history_';
 const MAX_HISTORY = 20;
 
 let searchImageFile = null;
 let currentSearchExport = null;
+let currentBookmarks = [];
+let bookmarkProjectId = null;
 
 function setSearchExportState(exportData) {
   currentSearchExport = exportData;
@@ -29,10 +33,137 @@ function setSearchExportState(exportData) {
 
 export function resetSearchState() {
   setSearchExportState(null);
+  currentBookmarks = [];
+  bookmarkProjectId = null;
+  renderBookmarks();
+}
+
+function getBookmarkKey(clip) {
+  return `${clip.videoId}|${Number(clip.start)}|${Number(clip.end)}`;
+}
+
+function isBookmarked(clip) {
+  return currentBookmarks.some((bookmark) => getBookmarkKey(bookmark) === getBookmarkKey(clip));
+}
+
+export async function loadBookmarks() {
+  const projectId = state.currentProject?.id;
+  if (!projectId) return;
+  bookmarkProjectId = projectId;
+
+  try {
+    const res = await apiFetch(`${API}/api/bookmarks?projectId=${encodeURIComponent(projectId)}`);
+    if (!res.ok) throw new Error('북마크를 불러오지 못했습니다.');
+    const data = await res.json();
+    if (state.currentProject?.id !== projectId) return;
+    currentBookmarks = data.bookmarks || [];
+    renderBookmarks();
+    if (currentSearchExport?.projectId === projectId) renderCurrentSearchResults();
+  } catch (err) {
+    if (state.currentProject?.id === projectId) {
+      currentBookmarks = [];
+      renderBookmarks();
+    }
+  }
+}
+
+function renderBookmarks() {
+  if (!bookmarkList || !bookmarkCount) return;
+  bookmarkCount.textContent = `(${currentBookmarks.length})`;
+  if (!currentBookmarks.length) {
+    bookmarkList.innerHTML = '<li class="bookmark-empty">저장한 클립이 없습니다.</li>';
+    return;
+  }
+
+  bookmarkList.innerHTML = currentBookmarks.map((bookmark) => `
+    <li class="bookmark-item" data-bookmark-id="${bookmark.id}">
+      <button class="bookmark-item-main" type="button">
+        <span class="bookmark-item-title">${escapeHtml(bookmark.videoTitle)}</span>
+        <span class="bookmark-item-time">${formatTime(bookmark.start)} – ${formatTime(bookmark.end)}</span>
+      </button>
+      <button class="bookmark-item-delete" type="button" title="북마크 삭제" aria-label="북마크 삭제">&times;</button>
+    </li>`).join('');
+
+  bookmarkList.querySelectorAll('.bookmark-item-main').forEach((button) => {
+    button.addEventListener('click', () => {
+      const item = currentBookmarks.find((bookmark) => bookmark.id === button.parentElement.dataset.bookmarkId);
+      if (item) playClipInModal(item);
+    });
+  });
+  bookmarkList.querySelectorAll('.bookmark-item-delete').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const item = button.parentElement;
+      try {
+        await deleteBookmark(item.dataset.bookmarkId);
+        showToast('북마크를 삭제했습니다.');
+      } catch (err) {
+        showToast(err.message || '북마크 삭제에 실패했습니다.', 'error');
+      }
+    });
+  });
+}
+
+async function saveBookmark(clip) {
+  const projectId = state.currentProject?.id;
+  if (!projectId || isBookmarked(clip)) return;
+  const res = await apiFetch(`${API}/api/bookmarks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      projectId,
+      videoId: clip.videoId,
+      assetId: clip.assetId,
+      videoTitle: clip.videoTitle,
+      start: clip.start,
+      end: clip.end,
+      rank: clip.rank,
+      transcription: clip.transcription,
+      thumbnailUrl: clip.videoThumbnailUrl || clip.thumbnailUrl,
+      hlsUrl: clip.hlsUrl,
+      query: currentSearchExport?.query || '',
+    }),
+  });
+  if (!res.ok) throw new Error(await getResponseError(res, '북마크 저장에 실패했습니다.'));
+  currentBookmarks.unshift(await res.json());
+  renderBookmarks();
+}
+
+async function deleteBookmark(bookmarkId) {
+  const projectId = state.currentProject?.id;
+  if (!projectId) return;
+  const res = await apiFetch(
+    `${API}/api/bookmarks/${encodeURIComponent(bookmarkId)}?projectId=${encodeURIComponent(projectId)}`,
+    { method: 'DELETE' }
+  );
+  if (!res.ok) throw new Error(await getResponseError(res, '북마크 삭제에 실패했습니다.'));
+  currentBookmarks = currentBookmarks.filter((bookmark) => bookmark.id !== bookmarkId);
+  renderBookmarks();
+  if (currentSearchExport?.projectId === projectId) renderCurrentSearchResults();
+}
+
+async function toggleBookmark(clip) {
+  try {
+    const existing = currentBookmarks.find((bookmark) => getBookmarkKey(bookmark) === getBookmarkKey(clip));
+    if (existing) {
+      await deleteBookmark(existing.id);
+      showToast('북마크를 삭제했습니다.');
+    } else {
+      await saveBookmark(clip);
+      renderCurrentSearchResults();
+      showToast('클립을 북마크에 저장했습니다.');
+    }
+  } catch (err) {
+    showToast(err.message || '북마크 처리에 실패했습니다.', 'error');
+  }
 }
 
 function getHistoryKey() {
   return HISTORY_KEY_PREFIX + (state.currentProject?.id || 'global');
+}
+
+async function getResponseError(res, fallback) {
+  const data = await res.json().catch(() => ({}));
+  return data.error || fallback;
 }
 
 function getSearchHistory() {
@@ -178,9 +309,10 @@ function renderSearchResults(clips, searchMeta = {}) {
 
   clips = [...clips].sort((a, b) => (a.rank || Infinity) - (b.rank || Infinity));
   setSearchExportState({
+    projectId: state.currentProject?.id,
     query: searchMeta.query || '',
     searchOptions: searchMeta.searchOptions || [],
-    exportedAt: formatLocalDateTime(),
+    exportedAt: searchMeta.exportedAt || formatLocalDateTime(),
     clips,
   });
 
@@ -234,6 +366,7 @@ function renderSearchResults(clips, searchMeta = {}) {
             <div class="clip-meta-row">
               <span class="clip-time">${formatTime(clip.start)} – ${formatTime(clip.end)}</span>
               ${clip.rank ? `<span class="clip-confidence">#${clip.rank}</span>` : ''}
+              <button class="btn-bookmark-clip${isBookmarked(clip) ? ' active' : ''}" data-index="${clip._index}" type="button" title="${isBookmarked(clip) ? '북마크 삭제' : '북마크 저장'}" aria-label="${isBookmarked(clip) ? '북마크 삭제' : '북마크 저장'}" aria-pressed="${isBookmarked(clip)}">${isBookmarked(clip) ? '&#9733;' : '&#9734;'}</button>
             </div>
             ${clip.transcription ? `<p class="clip-transcription">${escapeHtml(clip.transcription)}</p>` : ''}
           </div>
@@ -265,6 +398,14 @@ function renderSearchResults(clips, searchMeta = {}) {
     });
   });
 
+  searchResults.querySelectorAll('.btn-bookmark-clip').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const clip = clips[parseInt(button.dataset.index)];
+      if (clip) toggleBookmark(clip);
+    });
+  });
+
   searchResults.querySelectorAll('.timeline-segment').forEach((seg) => {
     seg.addEventListener('click', () => {
       const idx = parseInt(seg.dataset.clipIndex);
@@ -289,6 +430,11 @@ function renderSearchResults(clips, searchMeta = {}) {
       await navigateToVideoPage(video.id);
     });
   });
+}
+
+function renderCurrentSearchResults() {
+  if (!currentSearchExport?.clips?.length) return;
+  renderSearchResults(currentSearchExport.clips, currentSearchExport);
 }
 
 function normalizeSearchClip(clip) {

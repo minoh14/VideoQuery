@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { loadProjects } from './projects.js';
 import { loadVideos, stopPolling, startPolling } from './videos.js';
 import { updateAnalyzeIndicator, resetChat } from './analyze.js';
-import { resetSearchState } from './search.js';
+import { loadBookmarks, resetSearchState } from './search.js';
 
 const projectsView = document.getElementById('projects-view');
 const workspaceView = document.getElementById('workspace-view');
@@ -34,6 +34,7 @@ export function goToWorkspace(project) {
   resetChat();
   updateAnalyzeIndicator();
   showView(workspaceView);
+  loadBookmarks();
   loadVideos();
   startPolling();
 }

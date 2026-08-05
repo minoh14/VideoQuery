@@ -904,6 +904,22 @@ body {
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.08);
 }
 
+.btn-bookmark-clip {
+  margin-left: auto;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.btn-bookmark-clip:hover,
+.btn-bookmark-clip.active {
+  color: #f59e0b;
+}
+
 .clip-card .clip-info {
   display: flex;
   flex-direction: column;
@@ -1025,6 +1041,106 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 10px;
+}
+
+.bookmarks-panel {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  flex-shrink: 0;
+}
+
+.bookmarks-panel summary {
+  padding: 4px 2px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.bookmarks-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.bookmarks-panel summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 5px;
+  transition: transform 0.15s;
+}
+
+.bookmarks-panel[open] summary::before {
+  transform: rotate(90deg);
+}
+
+#bookmark-count {
+  color: var(--text-muted);
+}
+
+#bookmark-list {
+  max-height: 220px;
+  margin-top: 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.bookmark-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+  border-radius: 5px;
+}
+
+.bookmark-item:hover {
+  background: var(--bg-hover);
+}
+
+.bookmark-item-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 4px 6px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.bookmark-item-title {
+  width: 100%;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-item-time {
+  color: var(--accent);
+  font-size: 0.7rem;
+}
+
+.bookmark-item-delete {
+  padding: 3px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.bookmark-item-delete:hover {
+  color: #dc2626;
+}
+
+.bookmark-empty {
+  padding: 8px 4px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
 }
 
 .timeline-bar-container {
