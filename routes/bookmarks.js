@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { Router } = require('express');
-const { addBookmark, listBookmarks, removeBookmark } = require('../lib/bookmark-store');
+const { addBookmark, listBookmarks, updateBookmark, removeBookmark } = require('../lib/bookmark-store');
 
 const router = Router();
 
@@ -80,6 +80,18 @@ router.post('/', async (req, res, next) => {
 
     const saved = await addBookmark(projectId, bookmark);
     res.status(201).json(saved);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const projectId = requireProjectId(req.body?.projectId);
+    const note = req.body?.note;
+    if (note === undefined) return res.status(400).json({ error: 'note field is required' });
+    const updated = await updateBookmark(projectId, req.params.id, { note });
+    res.json(updated);
   } catch (err) {
     next(err);
   }

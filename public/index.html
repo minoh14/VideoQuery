@@ -260,6 +260,19 @@
     </div>
   </div>
 
+  <!-- 모달: 클립 메모 편집 -->
+  <div id="modal-clip-note" class="modal-overlay hidden">
+    <div class="modal modal-sm">
+      <h3>클립 메모</h3>
+      <input type="text" id="input-clip-note" placeholder="메모를 입력하세요..." maxlength="200" autocomplete="off">
+      <span class="meta-hint"><span id="clip-note-char-count">0</span>/200</span>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel">취소</button>
+        <button id="btn-save-clip-note" class="btn btn-primary">저장</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" class="toast-container"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>

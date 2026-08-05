@@ -1095,6 +1095,7 @@ body {
 
 .bookmark-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
   margin-bottom: 3px;
@@ -1134,6 +1135,25 @@ body {
   font-size: 0.7rem;
 }
 
+.bookmark-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.bookmark-item-note {
+  padding: 3px 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.bookmark-item-note:hover {
+  color: var(--accent);
+}
+
 .bookmark-item-delete {
   padding: 3px 6px;
   border: none;
@@ -1144,6 +1164,16 @@ body {
 
 .bookmark-item-delete:hover {
   color: #dc2626;
+}
+
+.bookmark-item-note-text {
+  width: 100%;
+  padding: 0 6px 4px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bookmark-empty {
@@ -1604,6 +1634,10 @@ body {
   width: 100%;
   max-width: 420px;
   box-shadow: 0 20px 60px var(--shadow-lg);
+}
+
+.modal.modal-sm {
+  max-width: 320px;
 }
 
 .modal h3 {

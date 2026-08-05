@@ -81,7 +81,11 @@ function renderBookmarks() {
         <span class="bookmark-item-title">${escapeHtml(bookmark.videoTitle)}</span>
         <span class="bookmark-item-time">${formatTime(bookmark.start)} – ${formatTime(bookmark.end)}</span>
       </button>
-      <button class="bookmark-item-delete" type="button" title="북마크 삭제" aria-label="북마크 삭제">&times;</button>
+      <div class="bookmark-item-actions">
+        <button class="bookmark-item-note" type="button" title="메모 편집" aria-label="메모 편집">${bookmark.note ? '&#128221;' : '&#9998;'}</button>
+        <button class="bookmark-item-delete" type="button" title="북마크 삭제" aria-label="북마크 삭제">&times;</button>
+      </div>
+      ${bookmark.note ? `<span class="bookmark-item-note-text">${escapeHtml(bookmark.note)}</span>` : ''}
     </li>`).join('');
 
   bookmarkList.querySelectorAll('.bookmark-item-main').forEach((button) => {
@@ -90,9 +94,17 @@ function renderBookmarks() {
       if (item) playClipInModal(item);
     });
   });
+  bookmarkList.querySelectorAll('.bookmark-item-note').forEach((button) => {
+    button.addEventListener('click', () => {
+      const li = button.closest('.bookmark-item');
+      const bookmark = currentBookmarks.find((b) => b.id === li.dataset.bookmarkId);
+      if (!bookmark) return;
+      openClipNoteModal(bookmark);
+    });
+  });
   bookmarkList.querySelectorAll('.bookmark-item-delete').forEach((button) => {
     button.addEventListener('click', async () => {
-      const item = button.parentElement;
+      const item = button.closest('.bookmark-item');
       try {
         await deleteBookmark(item.dataset.bookmarkId);
         showToast('북마크를 삭제했습니다.');
@@ -139,6 +151,71 @@ async function deleteBookmark(bookmarkId) {
   currentBookmarks = currentBookmarks.filter((bookmark) => bookmark.id !== bookmarkId);
   renderBookmarks();
   if (currentSearchExport?.projectId === projectId) renderCurrentSearchResults();
+}
+
+async function updateBookmarkNote(bookmarkId, note) {
+  const projectId = state.currentProject?.id;
+  if (!projectId) return;
+  const res = await apiFetch(`${API}/api/bookmarks/${encodeURIComponent(bookmarkId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId, note }),
+  });
+  if (!res.ok) throw new Error(await getResponseError(res, '메모 저장에 실패했습니다.'));
+  const updated = await res.json();
+  const idx = currentBookmarks.findIndex((b) => b.id === bookmarkId);
+  if (idx >= 0) currentBookmarks[idx] = updated;
+  renderBookmarks();
+}
+
+function openClipNoteModal(bookmark) {
+  const overlay = document.getElementById('modal-clip-note');
+  const input = document.getElementById('input-clip-note');
+  const charCount = document.getElementById('clip-note-char-count');
+  const saveBtn = document.getElementById('btn-save-clip-note');
+
+  input.value = bookmark.note || '';
+  charCount.textContent = input.value.length;
+  overlay.classList.remove('hidden');
+  setTimeout(() => input.focus(), 50);
+
+  function onInput() {
+    charCount.textContent = input.value.length;
+  }
+
+  async function onSave() {
+    try {
+      await updateBookmarkNote(bookmark.id, input.value);
+      showToast('메모를 저장했습니다.');
+    } catch (err) {
+      showToast(err.message || '메모 저장에 실패했습니다.', 'error');
+    }
+    close();
+  }
+
+  function onKeydown(e) {
+    if (e.key === 'Enter') onSave();
+    if (e.key === 'Escape') close();
+  }
+
+  function close() {
+    overlay.classList.add('hidden');
+    input.removeEventListener('input', onInput);
+    input.removeEventListener('keydown', onKeydown);
+    saveBtn.removeEventListener('click', onSave);
+    overlay.removeEventListener('click', onOverlayClick);
+    overlay.querySelectorAll('.modal-cancel').forEach((b) => b.removeEventListener('click', close));
+  }
+
+  function onOverlayClick(e) {
+    if (e.target === overlay) close();
+  }
+
+  input.addEventListener('input', onInput);
+  input.addEventListener('keydown', onKeydown);
+  saveBtn.addEventListener('click', onSave);
+  overlay.addEventListener('click', onOverlayClick);
+  overlay.querySelectorAll('.modal-cancel').forEach((b) => b.addEventListener('click', close));
 }
 
 async function toggleBookmark(clip) {
