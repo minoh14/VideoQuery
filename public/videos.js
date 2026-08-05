@@ -97,12 +97,15 @@ function renderVideos(videos, totalResults) {
     })
     .join('');
 
-  if (!videos.length && !state.pendingUploads.length) {
+  const pendingAssetIds = new Set(state.pendingUploads.map((p) => p.assetId).filter(Boolean));
+  const filteredVideos = videos.filter((v) => !pendingAssetIds.has(v.assetId));
+
+  if (!filteredVideos.length && !state.pendingUploads.length) {
     videoList.innerHTML = '<li style="color:#6b7280">영상이 없습니다.</li>';
     return;
   }
 
-  const videosHtml = videos
+  const videosHtml = filteredVideos
     .map((v) => {
       const badge = getBadge(v.status);
       const isProcessing = v.status !== 'ready' && v.status !== 'failed';
