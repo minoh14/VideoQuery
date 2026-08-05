@@ -1137,6 +1137,7 @@ body {
 
 .chat-assistant {
   justify-content: flex-start;
+  align-items: center;
 }
 
 .chat-bubble {
@@ -1200,6 +1201,57 @@ body {
   display: block;
   content: '';
   margin: 4px 0;
+}
+
+.btn-evidence {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-evidence:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.evidence-clip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.evidence-clip:last-child {
+  border-bottom: none;
+}
+
+.evidence-clip:hover {
+  background: var(--bg-hover);
+}
+
+.evidence-clip .clip-time {
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.evidence-clip .clip-transcription {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .typing-dots {

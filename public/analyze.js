@@ -1,5 +1,5 @@
 import { API, state } from './state.js';
-import { escapeHtml, formatDuration } from './utils.js';
+import { escapeHtml, formatDuration, formatTime } from './utils.js';
 import { apiFetch } from './auth.js';
 
 const analyzeInput = document.getElementById('analyze-input');
@@ -212,11 +212,15 @@ function applyInline(text) {
 }
 
 function renderChat() {
-  const messages = chatHistory.map((msg) => {
+  const messages = chatHistory.map((msg, idx) => {
     if (msg.role === 'user') {
       return `<div class="chat-message chat-user"><div class="chat-bubble chat-bubble-user">${escapeHtml(msg.content)}</div></div>`;
     }
-    return `<div class="chat-message chat-assistant"><div class="chat-bubble chat-bubble-assistant markdown-body">${renderMarkdown(msg.content)}</div></div>`;
+    const userQuery = idx > 0 && chatHistory[idx - 1].role === 'user' ? chatHistory[idx - 1].content : '';
+    const evidenceBtn = userQuery
+      ? `<button class="btn-evidence" data-query="${escapeHtml(userQuery)}">&#9654; 근거 영상 보기</button>`
+      : '';
+    return `<div class="chat-message chat-assistant"><div class="chat-bubble chat-bubble-assistant markdown-body">${renderMarkdown(msg.content)}</div>${evidenceBtn}</div>`;
   });
 
   const lastMsg = chatHistory[chatHistory.length - 1];
@@ -226,4 +230,98 @@ function renderChat() {
 
   analyzeResults.innerHTML = messages.join('');
   analyzeResults.scrollTop = analyzeResults.scrollHeight;
+
+  analyzeResults.querySelectorAll('.btn-evidence').forEach((btn) => {
+    btn.addEventListener('click', () => showEvidence(btn.dataset.query));
+  });
+}
+
+async function showEvidence(query) {
+  if (!state.currentProject || !state.selectedAnalyzeVideo) return;
+
+  const modal = document.getElementById('modal-video-preview');
+  const title = document.getElementById('modal-video-title');
+  const body = document.getElementById('modal-video-body');
+
+  title.textContent = '근거 영상 클립';
+  body.innerHTML = '<div class="loading"><span class="spinner"></span>관련 클립 검색 중...</div>';
+  modal.classList.remove('hidden');
+
+  try {
+    const formData = new FormData();
+    formData.append('indexId', state.currentProject.id);
+    formData.append('query', query);
+    formData.append('searchOptions', JSON.stringify(['visual', 'audio', 'transcription']));
+
+    const res = await apiFetch(`${API}/api/search`, { method: 'POST', body: formData });
+    if (!res.ok) throw new Error('검색 실패');
+    const data = await res.json();
+
+    const videoId = state.selectedAnalyzeVideo.id;
+    const clips = (data.clips || []).filter((c) => c.videoId === videoId).slice(0, 5);
+
+    if (!clips.length) {
+      body.innerHTML = '<p style="color:#6b7280;font-size:0.85rem;padding:16px">관련 클립을 찾지 못했습니다.</p>';
+      return;
+    }
+
+    body.innerHTML = clips.map((clip, i) => `
+      <div class="evidence-clip" data-idx="${i}">
+        <span class="clip-time">${formatTime(clip.start)} – ${formatTime(clip.end)}</span>
+        ${clip.transcription ? `<span class="clip-transcription">${escapeHtml(clip.transcription)}</span>` : ''}
+      </div>
+    `).join('');
+
+    body.querySelectorAll('.evidence-clip').forEach((el) => {
+      el.addEventListener('click', () => {
+        const clip = clips[parseInt(el.dataset.idx)];
+        playEvidenceClip(clip);
+      });
+    });
+  } catch (err) {
+    body.innerHTML = `<p style="color:#6b7280;font-size:0.85rem;padding:16px">오류: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function playEvidenceClip(clip) {
+  const body = document.getElementById('modal-video-body');
+  if (!clip.hlsUrl) {
+    body.innerHTML = '<p style="color:#6b7280;font-size:0.85rem;padding:16px">재생 가능한 스트림이 없습니다.</p>';
+    return;
+  }
+
+  const videoEl = document.createElement('video');
+  videoEl.controls = true;
+  videoEl.autoplay = true;
+  videoEl.style.width = '100%';
+  videoEl.style.borderRadius = '8px';
+  body.innerHTML = '';
+  body.appendChild(videoEl);
+
+  const startTime = clip.start || 0;
+  const endTime = clip.end;
+
+  function onTimeUpdate() {
+    if (endTime != null && videoEl.currentTime >= endTime) {
+      videoEl.pause();
+      videoEl.removeEventListener('timeupdate', onTimeUpdate);
+    }
+  }
+  videoEl.addEventListener('timeupdate', onTimeUpdate);
+
+  if (Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(clip.hlsUrl);
+    hls.attachMedia(videoEl);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      videoEl.currentTime = startTime;
+      videoEl.play();
+    });
+  } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+    videoEl.src = clip.hlsUrl;
+    videoEl.addEventListener('loadedmetadata', () => {
+      videoEl.currentTime = startTime;
+      videoEl.play();
+    });
+  }
 }
