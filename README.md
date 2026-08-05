@@ -8,7 +8,7 @@
 - **인증**: v1은 단일 사용자용 BYOK 연결 방식. TwelveLabs API 키는 로그인 시 서버 메모리 세션에만 저장하고, 브라우저에는 `HttpOnly` 세션 쿠키만 보관.
 - **인덱스 구조**: **프로젝트 = TwelveLabs 인덱스 1개**. 사용자는 프로젝트를 여러 개 만들고, 검색/분석은 선택한 프로젝트 범위에서 동작.
 - **모델**: 검색 = **Marengo 3.0**(인덱스에 활성화, 인덱싱 필요). 분석 = **Pegasus 1.5**(호출별 온더플라이, 사전 인덱싱 불필요).
-- **업로드 방식**: **공개 URL 업로드와 로컬 파일 업로드**를 지원한다. URL 업로드는 TwelveLabs에 URL을 전달하고, 파일 업로드는 `multipart/form-data`로 서버에 전달한 뒤 TwelveLabs에 직접 업로드한다.
+- **업로드 방식**: **공개 URL 업로드와 로컬 파일 업로드**를 지원한다. URL 업로드는 TwelveLabs에 URL을 전달하고, 로컬 파일은 청크 단위로 서버에 전송한 뒤 TwelveLabs Multipart Upload API로 스트리밍한다.
 - **상태 추적**: 앱 DB 캐시를 두지 않고, **매번 TwelveLabs에 실시간 조회**.
 - **분석 응답**: **논스트리밍(단건 반환)만** 지원. 실시간 스트리밍은 제외.
 - **검색 결과 재생**: **인라인 재생**(별도 상세 페이지 없음). 클립을 결과 영역 안에서 `start` 지점부터 재생.
@@ -49,12 +49,12 @@ TwelveLabs 플랫폼. Python 또는 Node.js SDK, 혹은 REST API(`https://api.tw
 ### FR-1. 영상 업로드
 - 사용자는 **공개 URL 또는 로컬 파일**로 영상을 추가할 수 있다.
   - 공개 URL: 사용자가 입력한 URL을 백엔드가 TwelveLabs 자산으로 등록한다.
-  - 로컬 파일: 브라우저에서 선택한 파일을 `multipart/form-data`로 백엔드에 전송하고, 백엔드가 TwelveLabs 자산으로 업로드한다. 여러 파일을 선택하면 파일별로 업로드 요청을 수행한다.
+  - 로컬 파일: 브라우저가 파일을 청크로 나누어 백엔드에 전송하고, 백엔드가 각 청크를 TwelveLabs Multipart Upload 세션으로 전달한다. 여러 파일을 선택하면 파일별 업로드 세션을 수행한다.
 - 업로드 후 인덱싱은 비동기로 진행되며, UI는 진행 상태(`uploading → indexing → ready / failed`)를 표시한다.
 - 제약:
   - 공개 URL: 최대 4GB. 원본 미디어 직링크만 지원(호스팅 플랫폼/클라우드 공유 링크 불가).
-  - 로컬 파일: 현재 서버 메모리 업로드 방식이며 파일 1개당 최대 200MB. 브라우저에서 비디오/오디오 파일을 선택할 수 있다.
-  - 200MB 초과 영상은 자산 처리도 비동기이므로, 인덱싱 전에 자산 상태(`ready`) 확인이 필요.
+  - 로컬 파일: 청크 업로드 방식이며 파일 1개당 최대 10GB. 브라우저에서 비디오/오디오 파일을 선택할 수 있고, 청크 전송률을 표시한다.
+  - URL·로컬 파일 모두 자산 처리와 인덱싱은 비동기로 진행되며, 인덱싱 전에 자산 상태(`ready`) 확인이 필요하다.
 
 ### FR-2. 영상 목록 조회
 - 인덱스에 속한 영상 목록을 조회한다(제목, 썸네일, 길이, 상태, 생성일).
@@ -153,7 +153,10 @@ VideoQuery/
 | `POST /api/projects`           | 프로젝트 생성(= 인덱스 생성) | `client.indexes.create(index_name, models=[{marengo3.0}])` (검색용. Pegasus는 인덱스에 넣지 않고 호출별로 사용)                        |
 | `GET  /api/projects`           | 프로젝트 목록                | 인덱스 목록 조회(실시간)                                                                                                               |
 | `POST /api/videos`             | 공개 URL 영상 업로드 시작    | `client.assets.create(method="url", url=...)`                                                                                          |
-| `POST /api/videos/upload`      | 로컬 파일 영상 업로드 시작   | `client.assets.create(method="direct", file=..., filename=...)`                                                                         |
+| `POST /api/videos/multipart/init`    | 로컬 파일 Multipart 세션 생성 | `client.multipartUpload.create({filename, type, totalSize})`                                                                       |
+| `POST /api/videos/multipart/chunk`   | 로컬 파일 청크 스트리밍 프록시 | 브라우저 청크를 TwelveLabs presigned URL로 스트리밍 PUT                                                                          |
+| `POST /api/videos/multipart/report`  | 업로드 청크 완료 보고        | `client.multipartUpload.reportChunkBatch(upload_id, {completedChunks})`                                                          |
+| `POST /api/videos/upload`      | 기존 소형 로컬 파일 업로드(레거시) | `client.assets.create(method="direct", file=..., filename=...)`                                                               |
 | `GET  /api/videos/{id}/status` | 상태 확인(실시간)            | `client.assets.retrieve(asset_id)` → `client.indexes.indexed_assets.retrieve(index_id, indexed_asset_id)`                              |
 | `GET  /api/videos`             | 영상 목록(실시간)            | 인덱스별 영상 목록 조회                                                                                                                |
 | `DELETE /api/videos/{id}`      | 영상 삭제                    | Delete an indexed asset (+ 필요 시 asset 삭제)                                                                                         |
@@ -169,12 +172,13 @@ VideoQuery/
 1. (초기 1회) 인덱스 생성: marengo3.0 활성화 (검색용)
 2. 입력 방식에 따라 자산 생성:
    ├─ URL:  client.assets.create(method="url", url=...) → asset_id
-   └─ 파일: client.assets.create(method="direct", file=..., filename=...) → asset_id
-3. 자산 상태 확인: assets.retrieve 로 status == "ready" 까지 폴링
+   └─ 파일: multipartUpload.create(...) → 청크 업로드/완료 보고 → asset_id
+3. 로컬 파일은 브라우저가 파일을 청크로 나누고, 서버가 각 청크를 TwelveLabs presigned URL로 스트리밍한다. 서버는 전체 파일을 메모리나 영구 저장소에 보관하지 않는다.
+4. 자산 상태 확인: assets.retrieve 로 status == "ready" 까지 폴링
    └ 여기까지 완료되면 → Pegasus 1.5 분석은 바로 가능 (인덱싱 대기 불필요)
-4. (검색을 쓰려면) 인덱싱 요청: client.indexes.indexed_assets.create(index_id, asset_id) → indexed_asset_id
-5. 인덱싱 모니터링:  indexed_assets.retrieve 로 status == "ready" 까지 폴링
-6. 완료 → 검색 가능
+5. (검색을 쓰려면) 인덱싱 요청: client.indexes.indexed_assets.create(index_id, asset_id) → indexed_asset_id
+6. 인덱싱 모니터링:  indexed_assets.retrieve 로 status == "ready" 까지 폴링
+7. 완료 → 검색 가능
 ```
 상태 폴링은 앱 캐시 없이 매 호출 TwelveLabs를 조회한다.
 UI 상태 표시: `uploading → (asset ready: 분석 가능) → indexing → ready(검색 가능) / failed`
@@ -264,7 +268,7 @@ SDK 예외를 앱 응답 코드로 매핑한다.
 
 ### 9.3 제약 요약
 - 검색은 **단일 인덱스 내에서만** 수행. 여러 인덱스 교차 검색 불가, 영상 단위 검색 불가.
-- 업로드는 공개 URL 또는 로컬 파일을 지원한다. 공개 URL은 최대 4GB, 로컬 파일은 현재 파일 1개당 최대 200MB이며 서버 메모리를 사용하는 multipart 업로드 방식이다(위 FR-1 참조). Pegasus 1.5 분석 대상 영상은 최대 2시간.
+- 업로드는 공개 URL 또는 로컬 파일을 지원한다. 공개 URL은 최대 4GB, 로컬 파일은 청크 기반 Multipart Upload로 파일 1개당 최대 10GB까지 지원한다. 서버는 전체 파일을 메모리에 올리지 않는다(위 FR-1 참조). Pegasus 1.5 분석 대상 영상은 최대 2시간.
 - 검색 쿼리 500토큰 / 분석 프롬프트 2,000토큰 / 분석 출력 Pegasus 1.5 최대 약 98,304토큰.
 - 검색은 인덱싱 완료가 전제. 분석은 자산만 준비되면 가능(인덱싱 불필요).
 
@@ -277,7 +281,7 @@ SDK 예외를 앱 응답 코드로 매핑한다.
 - ~~계정/멀티유저~~ → **v1 단일 사용자, API 키 기반 서버 세션만 사용**
 - ~~백엔드 언어~~ → **Node.js (Node.js SDK)**
 - ~~분석 모델~~ → **Pegasus 1.5 (온더플라이, 인덱싱 불필요)**; 검색 = Marengo 3.0
-- ~~업로드 방식~~ → **공개 URL 및 로컬 파일 업로드** (로컬 파일은 `multipart/form-data`, 파일 1개당 최대 200MB)
+- ~~업로드 방식~~ → **공개 URL 및 로컬 파일 업로드** (로컬 파일은 청크 기반 Multipart Upload, 파일 1개당 최대 10GB)
 - ~~상태 추적 방식~~ → **앱 캐시 없이 매번 TwelveLabs 실시간 조회**
 - ~~분석 스트리밍~~ → **논스트리밍만; 실시간 스트리밍 v1 제외**
 - ~~검색 결과 재생 UX~~ → **인라인 재생**(별도 상세 페이지 없음)

@@ -3,6 +3,9 @@ const multer = require('multer');
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
+const multipartSessions = new Map();
+const MAX_MULTIPART_SIZE = 10 * 1024 * 1024 * 1024;
+const MULTIPART_SESSION_TTL = 24 * 60 * 60 * 1000;
 
 function waitForAssetReady(tlClient, assetId, maxAttempts = 60) {
   return new Promise((resolve, reject) => {
@@ -22,6 +25,229 @@ function waitForAssetReady(tlClient, assetId, maxAttempts = 60) {
     poll();
   });
 }
+
+function parsePositiveInteger(value, fieldName) {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    const error = new Error(`${fieldName} must be a positive integer`);
+    error.status = 400;
+    throw error;
+  }
+  return parsed;
+}
+
+function getMultipartSession(uploadId) {
+  const session = multipartSessions.get(uploadId);
+  if (!session) {
+    const error = new Error('Multipart upload session not found or expired');
+    error.status = 404;
+    throw error;
+  }
+  return session;
+}
+
+async function getPresignedUrl(tlClient, session, chunkIndex) {
+  let url = session.uploadUrls.get(chunkIndex);
+  if (url) return url;
+
+  const result = await tlClient.multipartUpload.getAdditionalPresignedUrls(session.uploadId, {
+    start: chunkIndex,
+    count: 1,
+  });
+  for (const uploadUrl of result.uploadUrls || []) {
+    if (uploadUrl.chunkIndex && uploadUrl.url) {
+      session.uploadUrls.set(uploadUrl.chunkIndex, uploadUrl.url);
+    }
+  }
+
+  url = session.uploadUrls.get(chunkIndex);
+  if (!url) {
+    const error = new Error(`No upload URL available for chunk ${chunkIndex}`);
+    error.status = 502;
+    throw error;
+  }
+  return url;
+}
+
+async function indexMultipartAsset(session, tlClient) {
+  try {
+    await waitForAssetReady(tlClient, session.assetId, 300);
+    await tlClient.indexes.indexedAssets.create(session.indexId, {
+      assetId: session.assetId,
+      enableVideoStream: true,
+    });
+  } catch (err) {
+    console.error(`Failed to index multipart asset ${session.assetId}:`, err.message);
+  } finally {
+    multipartSessions.delete(session.uploadId);
+  }
+}
+
+// Create a TwelveLabs multipart session. The actual file bytes are uploaded
+// through /multipart/chunk, so the server never buffers the complete file.
+router.post('/multipart/init', async (req, res, next) => {
+  try {
+    const { indexId, filename, fileSize, contentType } = req.body;
+    if (!indexId || !filename) {
+      return res.status(400).json({ error: 'indexId and filename are required' });
+    }
+
+    const totalSize = parsePositiveInteger(fileSize, 'fileSize');
+    if (totalSize > MAX_MULTIPART_SIZE) {
+      return res.status(413).json({ error: 'Multipart uploads are limited to 10GB' });
+    }
+
+    const type = contentType?.startsWith('audio/') ? 'audio' : 'video';
+    const sessionResponse = await req.tlClient.multipartUpload.create({
+      filename,
+      type,
+      totalSize,
+    });
+
+    if (!sessionResponse.uploadId || !sessionResponse.assetId || !sessionResponse.chunkSize) {
+      throw new Error('TwelveLabs returned an incomplete multipart upload session');
+    }
+
+    const session = {
+      uploadId: sessionResponse.uploadId,
+      assetId: sessionResponse.assetId,
+      indexId,
+      totalSize,
+      chunkSize: sessionResponse.chunkSize,
+      totalChunks: sessionResponse.totalChunks || Math.ceil(totalSize / sessionResponse.chunkSize),
+      uploadUrls: new Map(
+        (sessionResponse.uploadUrls || [])
+          .filter((item) => item.chunkIndex && item.url)
+          .map((item) => [item.chunkIndex, item.url])
+      ),
+    };
+    multipartSessions.set(session.uploadId, session);
+
+    const cleanupTimer = setTimeout(() => multipartSessions.delete(session.uploadId), MULTIPART_SESSION_TTL);
+    cleanupTimer.unref?.();
+
+    res.status(201).json({
+      uploadId: session.uploadId,
+      assetId: session.assetId,
+      chunkSize: session.chunkSize,
+      totalChunks: session.totalChunks,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Stream one browser request directly to the TwelveLabs presigned storage URL.
+router.post('/multipart/chunk', async (req, res, next) => {
+  try {
+    const uploadId = req.query.uploadId;
+    const chunkIndex = parsePositiveInteger(req.query.chunkIndex, 'chunkIndex');
+    if (!uploadId) {
+      return res.status(400).json({ error: 'uploadId is required' });
+    }
+
+    const session = getMultipartSession(uploadId);
+    if (chunkIndex > session.totalChunks) {
+      return res.status(400).json({ error: 'chunkIndex is out of range' });
+    }
+
+    const expectedSize = Math.min(
+      session.chunkSize,
+      session.totalSize - ((chunkIndex - 1) * session.chunkSize)
+    );
+    const requestSize = req.headers['content-length'] ? Number(req.headers['content-length']) : null;
+    if (requestSize != null && requestSize !== expectedSize) {
+      return res.status(400).json({ error: `Chunk ${chunkIndex} must be ${expectedSize} bytes` });
+    }
+
+    const url = await getPresignedUrl(req.tlClient, session, chunkIndex);
+    const headers = { 'Content-Type': 'application/octet-stream' };
+    if (requestSize != null) headers['Content-Length'] = String(requestSize);
+
+    let response;
+    try {
+      response = await fetch(url, {
+        method: 'PUT',
+        body: req,
+        duplex: 'half',
+        headers,
+      });
+    } catch (err) {
+      session.uploadUrls.delete(chunkIndex);
+      throw err;
+    }
+
+    await response.arrayBuffer().catch(() => {});
+    if (!response.ok) {
+      session.uploadUrls.delete(chunkIndex);
+      const error = new Error(`Chunk upload failed with HTTP ${response.status}`);
+      error.status = 502;
+      throw error;
+    }
+
+    const proof = response.headers.get('etag')?.replace(/"/g, '');
+    if (!proof) {
+      session.uploadUrls.delete(chunkIndex);
+      const error = new Error('TwelveLabs did not return an ETag for the uploaded chunk');
+      error.status = 502;
+      throw error;
+    }
+
+    session.uploadUrls.delete(chunkIndex);
+    res.json({ chunkIndex, proof, proofType: 'etag', chunkSize: expectedSize });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Report one or more successfully uploaded chunks to TwelveLabs.
+router.post('/multipart/report', async (req, res, next) => {
+  try {
+    const { uploadId, completedChunks } = req.body;
+    if (!uploadId || !Array.isArray(completedChunks) || completedChunks.length === 0) {
+      return res.status(400).json({ error: 'uploadId and completedChunks are required' });
+    }
+
+    const session = getMultipartSession(uploadId);
+    if (completedChunks.length > 50) {
+      return res.status(400).json({ error: 'A maximum of 50 chunks can be reported at once' });
+    }
+
+    const sanitizedChunks = completedChunks.map((chunk) => ({
+      chunkIndex: parsePositiveInteger(chunk.chunkIndex, 'chunkIndex'),
+      proof: String(chunk.proof || ''),
+      proofType: 'etag',
+      chunkSize: parsePositiveInteger(chunk.chunkSize, 'chunkSize'),
+    }));
+    if (sanitizedChunks.some((chunk) => chunk.chunkIndex > session.totalChunks || !chunk.proof)) {
+      return res.status(400).json({ error: 'Invalid completed chunk data' });
+    }
+
+    const result = await req.tlClient.multipartUpload.reportChunkBatch(uploadId, {
+      completedChunks: sanitizedChunks,
+    });
+    const uploadComplete = Boolean(result.url || result.totalCompleted >= session.totalChunks);
+
+    if (uploadComplete) {
+      res.status(202).json({
+        assetId: session.assetId,
+        uploadComplete: true,
+        status: 'processing',
+      });
+      indexMultipartAsset(session, req.tlClient);
+      return;
+    }
+
+    res.json({
+      assetId: session.assetId,
+      uploadComplete: false,
+      totalCompleted: result.totalCompleted || 0,
+      totalChunks: session.totalChunks,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.post('/', async (req, res, next) => {
   try {

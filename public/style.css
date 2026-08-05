@@ -444,6 +444,19 @@ body {
   animation: progress-indeterminate 1.5s ease-in-out infinite;
 }
 
+.progress-bar-fill.determinate {
+  width: 0;
+  animation: none;
+  transform: none;
+  transition: width 0.2s ease;
+}
+
+.upload-progress-label {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
 @keyframes progress-indeterminate {
   0% {
     transform: translateX(-100%);

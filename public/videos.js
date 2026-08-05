@@ -42,16 +42,22 @@ function renderVideos(videos, totalResults) {
   document.getElementById('video-count').textContent = totalCount > 0 ? `(${totalCount})${durationText}` : '';
 
   const pendingHtml = state.pendingUploads
-    .map((p) => `
-      <li class="pending-upload">
+    .map((p) => {
+      const isIndexing = Boolean(p.assetId);
+      const progressClass = p.chunked ? 'progress-bar-fill determinate' : 'progress-bar-fill';
+      const progressStyle = p.chunked ? `style="width:${Math.round(p.progress || 0)}%"` : '';
+      return `
+      <li class="pending-upload" data-upload-id="${p.id}">
         <div class="video-item-content">
           <div class="video-item-row">
             <span class="video-name">${escapeHtml(p.title)}</span>
-            <span class="badge badge-uploading">업로드 중</span>
+            <span class="upload-progress-label">${p.chunked ? `${Math.round(p.progress || 0)}%` : ''}</span>
+            <span class="badge ${isIndexing ? 'badge-indexing' : 'badge-uploading'}">${isIndexing ? '인덱싱 중' : '업로드 중'}</span>
           </div>
-          <div class="progress-bar"><div class="progress-bar-fill"></div></div>
+          <div class="progress-bar"><div class="${progressClass}" ${progressStyle}></div></div>
         </div>
-      </li>`)
+      </li>`;
+    })
     .join('');
 
   if (!videos.length && !state.pendingUploads.length) {
@@ -155,6 +161,25 @@ function renderVideos(videos, totalResults) {
 
 function updateAnalyzeVideoSelect() {
   import('./analyze.js').then(({ updateAnalyzeIndicator }) => updateAnalyzeIndicator());
+}
+
+function createPendingUpload(title, chunked = false) {
+  return {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    title,
+    assetId: null,
+    progress: 0,
+    chunked,
+  };
+}
+
+function updatePendingUploadProgress(pending) {
+  const item = videoList.querySelector(`[data-upload-id="${pending.id}"]`);
+  if (!item) return;
+  const fill = item.querySelector('.progress-bar-fill');
+  const label = item.querySelector('.upload-progress-label');
+  if (fill && pending.chunked) fill.style.width = `${pending.progress}%`;
+  if (label && pending.chunked) label.textContent = `${Math.round(pending.progress)}%`;
 }
 
 export async function navigateToVideoPage(videoId) {
@@ -315,7 +340,7 @@ async function uploadVideoByUrl() {
   btn.disabled = true;
 
   const title = titleInput.value.trim() || url.split('/').pop() || '새 영상';
-  const pending = { title, assetId: null };
+  const pending = createPendingUpload(title);
   state.pendingUploads.push(pending);
 
   urlInput.value = '';
@@ -347,6 +372,123 @@ async function uploadVideoByUrl() {
   }
 }
 
+const CHUNK_CONCURRENCY = 3;
+const REPORT_BATCH_SIZE = 5;
+const CHUNK_MAX_RETRIES = 3;
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function getResponseError(res, fallback) {
+  const data = await res.json().catch(() => ({}));
+  return data.error || fallback;
+}
+
+async function uploadChunk(uploadId, chunkIndex, chunk) {
+  let lastError;
+  for (let attempt = 0; attempt <= CHUNK_MAX_RETRIES; attempt++) {
+    try {
+      const res = await apiFetch(
+        `${API}/api/videos/multipart/chunk?uploadId=${encodeURIComponent(uploadId)}&chunkIndex=${chunkIndex}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: chunk,
+        }
+      );
+      if (res.ok) return res.json();
+      lastError = new Error(await getResponseError(res, `청크 ${chunkIndex} 업로드 실패`));
+    } catch (err) {
+      lastError = err;
+    }
+    if (attempt < CHUNK_MAX_RETRIES) await wait(500 * (2 ** attempt));
+  }
+  throw lastError || new Error(`청크 ${chunkIndex} 업로드 실패`);
+}
+
+async function reportChunks(uploadId, completedChunks) {
+  let lastError;
+  for (let attempt = 0; attempt <= CHUNK_MAX_RETRIES; attempt++) {
+    try {
+      const res = await apiFetch(`${API}/api/videos/multipart/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uploadId, completedChunks }),
+      });
+      if (res.ok) return res.json();
+      lastError = new Error(await getResponseError(res, '청크 완료 보고 실패'));
+    } catch (err) {
+      lastError = err;
+    }
+    if (attempt < CHUNK_MAX_RETRIES) await wait(500 * (2 ** attempt));
+  }
+  throw lastError || new Error('청크 완료 보고 실패');
+}
+
+async function uploadFileInChunks(file, onProgress) {
+  const initRes = await apiFetch(`${API}/api/videos/multipart/init`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      indexId: state.currentProject.id,
+      filename: file.name,
+      fileSize: file.size,
+      contentType: file.type,
+    }),
+  });
+  if (!initRes.ok) throw new Error(await getResponseError(initRes, '대용량 업로드를 시작하지 못했습니다.'));
+
+  const session = await initRes.json();
+  const chunkSize = Number(session.chunkSize);
+  const totalChunks = Number(session.totalChunks);
+  if (!session.uploadId || !chunkSize || !totalChunks) {
+    throw new Error('업로드 세션 정보가 올바르지 않습니다.');
+  }
+
+  let nextChunkIndex = 1;
+  let uploadedChunks = 0;
+  let pendingReports = [];
+  let reportChain = Promise.resolve();
+  let lastReport = null;
+
+  const queueReport = (chunks) => {
+    reportChain = reportChain.then(async () => {
+      lastReport = await reportChunks(session.uploadId, chunks);
+    });
+    return reportChain;
+  };
+
+  async function worker() {
+    while (true) {
+      const chunkIndex = nextChunkIndex++;
+      if (chunkIndex > totalChunks) return;
+
+      const start = (chunkIndex - 1) * chunkSize;
+      const end = Math.min(start + chunkSize, file.size);
+      const result = await uploadChunk(session.uploadId, chunkIndex, file.slice(start, end));
+      pendingReports.push(result);
+      uploadedChunks++;
+      onProgress((uploadedChunks / totalChunks) * 100);
+
+      if (pendingReports.length >= REPORT_BATCH_SIZE) {
+        const batch = pendingReports;
+        pendingReports = [];
+        await queueReport(batch);
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: CHUNK_CONCURRENCY }, () => worker()));
+  if (pendingReports.length) await queueReport(pendingReports);
+  await reportChain;
+
+  if (!lastReport?.uploadComplete) {
+    throw new Error('모든 청크가 업로드되었지만 서버가 완료 상태를 확인하지 못했습니다.');
+  }
+  return lastReport;
+}
+
 async function uploadVideoByFile() {
   const fileInput = document.getElementById('input-video-file');
   const files = Array.from(fileInput.files);
@@ -360,7 +502,7 @@ async function uploadVideoByFile() {
   closeModals();
 
   const pendings = files.map((file) => {
-    const pending = { title: file.name, assetId: null };
+    const pending = createPendingUpload(file.name, true);
     state.pendingUploads.push(pending);
     return { file, pending };
   });
@@ -368,17 +510,13 @@ async function uploadVideoByFile() {
 
   await Promise.all(pendings.map(async ({ file, pending }) => {
     try {
-      const formData = new FormData();
-      formData.append('indexId', state.currentProject.id);
-      formData.append('file', file);
-
-      const res = await apiFetch(`${API}/api/videos/upload`, {
-        method: 'POST',
-        body: formData,
+      const data = await uploadFileInChunks(file, (progress) => {
+        pending.progress = progress;
+        updatePendingUploadProgress(pending);
       });
-      if (!res.ok) throw new Error('업로드 실패');
-      const data = await res.json();
       pending.assetId = data.assetId;
+      pending.progress = 100;
+      updatePendingUploadProgress(pending);
     } catch (err) {
       state.pendingUploads = state.pendingUploads.filter((p) => p !== pending);
       showToast(`${file.name} 업로드 실패`, 'error');
