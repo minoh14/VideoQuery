@@ -52,6 +52,8 @@ TwelveLabs 플랫폼. Python 또는 Node.js SDK, 혹은 REST API(`https://api.tw
   - 공개 URL: 사용자가 입력한 URL을 백엔드가 TwelveLabs 자산으로 등록한다.
   - 로컬 파일: 브라우저가 파일을 청크로 나누어 백엔드에 전송하고, 백엔드가 각 청크를 TwelveLabs Multipart Upload 세션으로 전달한다. 여러 파일을 선택하면 파일별 업로드 세션을 수행한다.
 - 업로드 후 인덱싱은 비동기로 진행되며, UI는 진행 상태(`uploading → indexing → ready / failed`)를 표시한다.
+- 같은 프로젝트에 이미 추가된 공개 URL은 정규화 후 중복 감지하며, TwelveLabs 업로드 요청을 보내지 않고 기존 영상 확인을 안내한다.
+- URL 중복 감지 기록은 `data/video-sources.json`에 저장되며, 영상 삭제 또는 프로젝트 삭제 시 함께 정리한다.
 - 제약:
   - 공개 URL: 최대 4GB. 원본 미디어 직링크만 지원(호스팅 플랫폼/클라우드 공유 링크 불가).
   - 로컬 파일: 청크 업로드 방식이며 파일 1개당 최대 10GB. 브라우저에서 비디오/오디오 파일을 선택할 수 있고, 청크 전송률을 표시한다.
@@ -161,7 +163,7 @@ VideoQuery/
 | `POST /api/auth/logout`        | 서버 세션 삭제                | 외부 호출 없음                                                                                                                         |
 | `POST /api/projects`           | 프로젝트 생성(= 인덱스 생성) | `client.indexes.create(index_name, models=[{marengo3.0}])` (검색용. Pegasus는 인덱스에 넣지 않고 호출별로 사용)                        |
 | `GET  /api/projects`           | 프로젝트 목록                | 인덱스 목록 조회(실시간)                                                                                                               |
-| `POST /api/videos`             | 공개 URL 영상 업로드 시작    | `client.assets.create(method="url", url=...)`                                                                                          |
+| `POST /api/videos`             | 공개 URL 영상 업로드 시작    | 서버 URL 중복 검사 후 `client.assets.create(method="url", url=...)`                                                                      |
 | `POST /api/videos/multipart/init`    | 로컬 파일 Multipart 세션 생성 | `client.multipartUpload.create({filename, type, totalSize})`                                                                       |
 | `POST /api/videos/multipart/chunk`   | 로컬 파일 청크 스트리밍 프록시 | 브라우저 청크를 TwelveLabs presigned URL로 스트리밍 PUT                                                                          |
 | `POST /api/videos/multipart/report`  | 업로드 청크 완료 보고        | `client.multipartUpload.reportChunkBatch(upload_id, {completedChunks})`                                                          |
@@ -189,7 +191,7 @@ VideoQuery/
 ```
 1. (초기 1회) 인덱스 생성: marengo3.0 활성화 (검색용)
 2. 입력 방식에 따라 자산 생성:
-   ├─ URL:  client.assets.create(method="url", url=...) → asset_id
+   ├─ URL:  정규화된 URL 중복 검사 → client.assets.create(method="url", url=...) → asset_id
    └─ 파일: multipartUpload.create(...) → 청크 업로드/완료 보고 → asset_id
 3. 로컬 파일은 브라우저가 파일을 청크로 나누고, 서버가 각 청크를 TwelveLabs presigned URL로 스트리밍한다. 서버는 전체 파일을 메모리나 영구 저장소에 보관하지 않는다.
 4. 자산 상태 확인: assets.retrieve 로 status == "ready" 까지 폴링

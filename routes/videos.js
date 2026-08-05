@@ -1,6 +1,13 @@
 const { Router } = require('express');
 const multer = require('multer');
 const { getMeta, setMeta, deleteMeta, getBatchMeta, validateMeta } = require('../lib/video-meta-store');
+const {
+  finalizeSource,
+  normalizeUrl,
+  removeSourceByAssetId,
+  releaseSource,
+  reserveSource,
+} = require('../lib/video-source-store');
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
@@ -257,28 +264,53 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'indexId and url are required' });
     }
 
-    const asset = await req.tlClient.assets.create({
-      method: 'url',
-      url,
-      filename: title || undefined,
-      enableHls: true,
-      enableThumbnail: true,
-    });
+    let reservation;
+    try {
+      const sourceUrl = String(url).trim();
+      reservation = await reserveSource(indexId, {
+        url: sourceUrl,
+        normalizedUrl: normalizeUrl(sourceUrl),
+        title,
+      });
 
-    res.status(202).json({
-      assetId: asset.id,
-      status: 'processing',
-    });
+      const asset = await req.tlClient.assets.create({
+        method: 'url',
+        url: sourceUrl,
+        filename: title || undefined,
+        enableHls: true,
+        enableThumbnail: true,
+      });
 
-    const tlClient = req.tlClient;
-    waitForAssetReady(tlClient, asset.id)
-      .then(() =>
-        tlClient.indexes.indexedAssets.create(indexId, {
-          assetId: asset.id,
-          enableVideoStream: true,
-        })
-      )
-      .catch(() => {});
+      await finalizeSource(indexId, reservation.id, {
+        assetId: asset.id,
+        status: 'processing',
+      });
+
+      res.status(202).json({
+        assetId: asset.id,
+        status: 'processing',
+      });
+
+      const tlClient = req.tlClient;
+      waitForAssetReady(tlClient, asset.id)
+        .then(() =>
+          tlClient.indexes.indexedAssets.create(indexId, {
+            assetId: asset.id,
+            enableVideoStream: true,
+          })
+        )
+        .catch(() => {});
+    } catch (err) {
+      if (reservation) await releaseSource(indexId, reservation.id).catch(() => {});
+      if (err.code === 'DUPLICATE_URL') {
+        return res.status(409).json({
+          error: err.message,
+          duplicate: true,
+          existing: err.source,
+        });
+      }
+      throw err;
+    }
   } catch (err) {
     next(err);
   }
@@ -575,8 +607,16 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(400).json({ error: 'indexId query parameter is required' });
     }
 
+    let indexedAsset;
+    try {
+      indexedAsset = await req.tlClient.indexes.indexedAssets.retrieve(indexId, id);
+    } catch {
+      // The indexed asset may already be unavailable; continue deleting it.
+    }
     await req.tlClient.indexes.indexedAssets.delete(indexId, id);
     await deleteMeta(indexId, id).catch(() => {});
+    const assetId = req.query.assetId || indexedAsset?.assetId;
+    if (assetId) await removeSourceByAssetId(indexId, assetId).catch(() => {});
 
     res.status(204).end();
   } catch (err) {

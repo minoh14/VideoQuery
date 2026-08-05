@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const { clearSources } = require('../lib/video-source-store');
 
 const router = Router();
 
@@ -69,6 +70,7 @@ router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     await req.tlClient.indexes.delete(id);
+    await clearSources(id).catch(() => {});
     res.status(204).end();
   } catch (err) {
     next(err);

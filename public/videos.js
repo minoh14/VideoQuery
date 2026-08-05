@@ -426,15 +426,20 @@ async function uploadVideoByUrl() {
         title: title,
       }),
     });
-    if (!res.ok) throw new Error('업로드 실패');
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 409 && data.duplicate) {
+        throw new Error('이미 이 프로젝트에 추가된 URL입니다. 기존 영상 목록에서 확인해주세요.');
+      }
+      throw new Error(data.error || '업로드 실패');
+    }
     pending.assetId = data.assetId;
     loadVideos();
     ensurePolling();
   } catch (err) {
     state.pendingUploads = state.pendingUploads.filter((p) => p !== pending);
     loadVideos();
-    showAlert('영상 추가에 실패했습니다.');
+    showAlert(err.message || '영상 추가에 실패했습니다.');
   } finally {
     btn.disabled = false;
   }
