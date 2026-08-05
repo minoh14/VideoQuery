@@ -434,7 +434,7 @@ router.get('/', async (req, res, next) => {
 
 router.get('/statuses', async (req, res, next) => {
   try {
-    const { indexId } = req.query;
+    const { indexId, pendingAssetIds } = req.query;
     if (!indexId) {
       return res.status(400).json({ error: 'indexId query parameter is required' });
     }
@@ -457,7 +457,26 @@ router.get('/statuses', async (req, res, next) => {
       page++;
     }
 
-    res.json({ statuses: allStatuses });
+    const indexedAssetIds = new Set(allStatuses.map((s) => s.assetId).filter(Boolean));
+    const pendingStatuses = [];
+    if (pendingAssetIds) {
+      const ids = pendingAssetIds.split(',').filter((id) => id && !indexedAssetIds.has(id));
+      await Promise.all(ids.map(async (assetId) => {
+        try {
+          const asset = await req.tlClient.assets.retrieve(assetId);
+          pendingStatuses.push({
+            id: null,
+            assetId,
+            filename: asset.systemMetadata?.filename || null,
+            status: asset.status === 'ready' ? 'pending_index' : asset.status,
+          });
+        } catch {
+          // asset not found or error — ignore
+        }
+      }));
+    }
+
+    res.json({ statuses: allStatuses, pendingStatuses });
   } catch (err) {
     next(err);
   }

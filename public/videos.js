@@ -97,6 +97,12 @@ function renderVideos(videos, totalResults) {
     })
     .join('');
 
+  const settledAssetIds = new Set(
+    videos.filter((v) => v.status === 'ready' || v.status === 'failed').map((v) => v.assetId).filter(Boolean)
+  );
+  if (settledAssetIds.size) {
+    state.pendingUploads = state.pendingUploads.filter((p) => !p.assetId || !settledAssetIds.has(p.assetId));
+  }
   const pendingAssetIds = new Set(state.pendingUploads.map((p) => p.assetId).filter(Boolean));
   const filteredVideos = videos.filter((v) => !pendingAssetIds.has(v.assetId));
 
@@ -312,7 +318,7 @@ function getBadge(status) {
     case 'failed':
       return { cls: 'badge-failed', label: '실패' };
     default:
-      return { cls: 'badge-uploading', label: '처리 중' };
+      return { cls: 'badge-indexing', label: '인덱싱 중' };
   }
 }
 
@@ -333,12 +339,21 @@ async function pollVideos() {
 async function checkStatuses() {
   if (!state.currentProject) return false;
   try {
-    const res = await apiFetch(`${API}/api/videos/statuses?indexId=${state.currentProject.id}`);
+    const pendingWithAsset = state.pendingUploads.filter((p) => p.assetId).map((p) => p.assetId);
+    const params = new URLSearchParams({ indexId: state.currentProject.id });
+    if (pendingWithAsset.length) params.set('pendingAssetIds', pendingWithAsset.join(','));
+    const res = await apiFetch(`${API}/api/videos/statuses?${params}`);
     const data = await res.json();
     const statuses = data.statuses || [];
+    const pendingStatuses = data.pendingStatuses || [];
 
     const allAssetIds = new Set(statuses.map((s) => s.assetId).filter(Boolean));
-    state.pendingUploads = state.pendingUploads.filter((p) => !p.assetId || !allAssetIds.has(p.assetId));
+    const stillProcessingAssetIds = new Set(
+      pendingStatuses.filter((s) => s.status !== 'failed').map((s) => s.assetId)
+    );
+    state.pendingUploads = state.pendingUploads.filter((p) =>
+      !p.assetId || (!allAssetIds.has(p.assetId) && stillProcessingAssetIds.has(p.assetId))
+    );
 
     let hasProcessing = false;
     for (const item of statuses) {
