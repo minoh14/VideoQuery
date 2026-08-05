@@ -23,7 +23,13 @@ function waitForAssetReady(tlClient, assetId, maxAttempts = 60) {
       try {
         const asset = await tlClient.assets.retrieve(assetId);
         if (asset.status === 'ready') return resolve(asset);
-        if (asset.status === 'failed') return reject(new Error('Asset processing failed'));
+        if (asset.status === 'failed') {
+          const reason = asset.error?.message || 'Asset processing failed';
+          const error = new Error(`Asset processing failed: ${reason}`);
+          error.code = 'ASSET_PROCESSING_FAILED';
+          error.assetError = asset.error || null;
+          return reject(error);
+        }
         if (attempts >= maxAttempts) return reject(new Error('Asset processing timed out'));
         setTimeout(poll, 2000);
       } catch (err) {
@@ -85,7 +91,10 @@ async function indexMultipartAsset(session, tlClient) {
       enableVideoStream: true,
     });
   } catch (err) {
-    console.error(`Failed to index multipart asset ${session.assetId}:`, err.message);
+    console.error(`Failed to index multipart asset ${session.assetId}:`, {
+      message: err.message,
+      assetError: err.assetError || null,
+    });
   } finally {
     multipartSessions.delete(session.uploadId);
   }
@@ -299,7 +308,12 @@ router.post('/', async (req, res, next) => {
             enableVideoStream: true,
           })
         )
-        .catch(() => {});
+        .catch((err) => {
+          console.error(`Failed to index URL asset ${asset.id}:`, {
+            message: err.message,
+            assetError: err.assetError || null,
+          });
+        });
     } catch (err) {
       if (reservation) await releaseSource(indexId, reservation.id).catch(() => {});
       if (err.code === 'DUPLICATE_URL') {
@@ -345,7 +359,12 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
           enableVideoStream: true,
         })
       )
-      .catch(() => {});
+      .catch((err) => {
+        console.error(`Failed to index direct asset ${asset.id}:`, {
+          message: err.message,
+          assetError: err.assetError || null,
+        });
+      });
   } catch (err) {
     next(err);
   }
