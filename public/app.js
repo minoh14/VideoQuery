@@ -166,6 +166,15 @@ document.getElementById('btn-clear-video-filter').addEventListener('click', () =
   loadVideos();
 });
 
+document.querySelectorAll('.filter-toggle input').forEach((cb) => {
+  cb.addEventListener('change', () => {
+    if (document.getElementById('video-filter-input').value.trim()) {
+      state.videoPage = 1;
+      loadVideos();
+    }
+  });
+});
+
 document.getElementById('video-sort').addEventListener('change', () => {
   state.videoPage = 1;
   loadVideos();

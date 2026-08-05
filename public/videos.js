@@ -21,7 +21,14 @@ export async function loadVideos() {
       pageLimit: 10,
     });
     if (sortBy && sortBy !== 'newest') params.set('sortBy', sortBy);
-    if (filterText) params.set('filter', filterText);
+    if (filterText) {
+      params.set('filter', filterText);
+      const fields = [];
+      if (document.getElementById('filter-by-name')?.checked) fields.push('name');
+      if (document.getElementById('filter-by-tag')?.checked) fields.push('tag');
+      if (document.getElementById('filter-by-memo')?.checked) fields.push('memo');
+      if (fields.length) params.set('filterFields', fields.join(','));
+    }
 
     const res = await apiFetch(`${API}/api/videos?${params}`);
     const data = await res.json();

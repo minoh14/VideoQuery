@@ -325,13 +325,37 @@ body {
 }
 
 .video-filter-wrapper {
-  position: relative;
   margin: 8px 0;
   flex-shrink: 0;
 }
 
 .video-filter-wrapper.hidden {
   display: none;
+}
+
+.video-filter-options {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.filter-toggle input {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--accent);
+}
+
+.video-filter-input-row {
+  position: relative;
 }
 
 .video-filter-input {

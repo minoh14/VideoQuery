@@ -321,7 +321,7 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const { indexId, page = '1', pageLimit = '10', sortBy, filter } = req.query;
+    const { indexId, page = '1', pageLimit = '10', sortBy, filter, filterFields } = req.query;
     if (!indexId) {
       return res.status(400).json({ error: 'indexId query parameter is required' });
     }
@@ -356,7 +356,17 @@ router.get('/', async (req, res, next) => {
       let filtered = allVideos;
       if (filter) {
         const keyword = filter.toLowerCase();
-        filtered = allVideos.filter((v) => (v.filename || '').toLowerCase().includes(keyword));
+        const fields = filterFields ? filterFields.split(',') : ['name'];
+        const metas = fields.includes('tag') || fields.includes('memo')
+          ? await getBatchMeta(indexId, allVideos.map((v) => v.id))
+          : {};
+        filtered = allVideos.filter((v) => {
+          if (fields.includes('name') && (v.filename || '').toLowerCase().includes(keyword)) return true;
+          const meta = metas[v.id];
+          if (meta && fields.includes('tag') && meta.tags && meta.tags.some((t) => t.toLowerCase().includes(keyword))) return true;
+          if (meta && fields.includes('memo') && (meta.memo || '').toLowerCase().includes(keyword)) return true;
+          return false;
+        });
       }
 
       if (sortBy && sortBy !== 'newest') {
