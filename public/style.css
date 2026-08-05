@@ -1048,6 +1048,92 @@ body {
   gap: 10px;
 }
 
+.collections-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.collections-label {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.btn-small {
+  padding: 3px 7px;
+  font-size: 0.7rem;
+}
+
+.collection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.collection-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-radius: 5px;
+}
+
+.collection-row.active,
+.collection-row:hover {
+  background: var(--bg-hover);
+}
+
+.collection-select {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.collection-row.active .collection-select {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.collection-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collection-count {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.collection-action {
+  padding: 3px 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.collection-action:hover {
+  color: var(--text-primary);
+}
+
+.collection-delete:hover {
+  color: #dc2626;
+}
+
 .bookmarks-panel {
   margin-top: 10px;
   border-top: 1px solid var(--border);
@@ -1151,6 +1237,19 @@ body {
 }
 
 .bookmark-item-note:hover {
+  color: var(--accent);
+}
+
+.bookmark-item-organize {
+  padding: 3px 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.bookmark-item-organize:hover {
   color: var(--accent);
 }
 
@@ -1660,6 +1759,82 @@ body {
 .modal input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.modal textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  outline: none;
+}
+
+.modal textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.modal-help {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.btn-full {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.collection-picker-list {
+  display: flex;
+  max-height: 220px;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  overflow-y: auto;
+}
+
+.collection-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.collection-picker-item:hover {
+  background: var(--bg-hover);
+}
+
+.collection-picker-item input[type="checkbox"] {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.collection-picker-item span {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collection-picker-item small {
+  flex-shrink: 0;
+  color: var(--text-muted);
 }
 
 .modal-actions {

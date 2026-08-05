@@ -8,6 +8,7 @@ const videosRouter = require('./routes/videos');
 const searchRouter = require('./routes/search');
 const analyzeRouter = require('./routes/analyze');
 const bookmarksRouter = require('./routes/bookmarks');
+const collectionsRouter = require('./routes/collections');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,7 @@ app.use('/api/videos', videosRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/analyze', analyzeRouter);
 app.use('/api/bookmarks', bookmarksRouter);
+app.use('/api/collections', collectionsRouter);
 
 app.use((err, req, res, next) => {
   const statusMap = {

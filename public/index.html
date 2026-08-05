@@ -77,6 +77,11 @@
         <div id="video-pagination" class="pagination"></div>
         <details id="bookmarks-panel" class="bookmarks-panel">
           <summary>저장한 클립 <span id="bookmark-count">(0)</span></summary>
+          <div class="collections-toolbar">
+            <span class="collections-label">컬렉션</span>
+            <button id="btn-new-collection" class="btn btn-ghost btn-small" type="button">+ 새 컬렉션</button>
+          </div>
+          <div id="collection-list" class="collection-list"></div>
           <ul id="bookmark-list"></ul>
         </details>
       </aside>
@@ -222,6 +227,45 @@
         <button class="btn-close-modal" id="btn-close-video-preview">&times;</button>
       </div>
       <div id="modal-video-body" class="modal-video-body"></div>
+    </div>
+  </div>
+
+  <!-- 모달: 컬렉션 생성/수정 -->
+  <div id="modal-collection" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="collection-modal-title">새 컬렉션</h3>
+      <input type="text" id="input-collection-name" placeholder="컬렉션 이름" maxlength="100">
+      <textarea id="input-collection-description" placeholder="설명 (선택)" maxlength="500"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel">취소</button>
+        <button id="btn-save-collection" class="btn btn-primary">생성</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 모달: 컬렉션 선택 -->
+  <div id="modal-collection-picker" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>컬렉션에 추가</h3>
+      <p class="modal-help">저장한 클립은 모든 클립에 남아 있으며, 여러 컬렉션에 추가할 수 있습니다.</p>
+      <div id="collection-picker-list" class="collection-picker-list"></div>
+      <button id="btn-create-collection-from-picker" class="btn btn-ghost btn-full">+ 새 컬렉션 만들기</button>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel">나중에</button>
+        <button id="btn-apply-collection-picker" class="btn btn-primary">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 모달: 컬렉션 삭제 -->
+  <div id="modal-delete-collection" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>컬렉션 삭제</h3>
+      <p>컬렉션만 삭제되며, 포함된 클립은 모든 클립에 남아 있습니다.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel">취소</button>
+        <button id="btn-confirm-delete-collection" class="btn btn-danger">삭제</button>
+      </div>
     </div>
   </div>
 

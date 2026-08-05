@@ -69,7 +69,9 @@ TwelveLabs 플랫폼. Python 또는 Node.js SDK, 혹은 REST API(`https://api.tw
 - 검색 결과의 특정 클립(영상 ID, 시작·종료 시각, 제목, 자막, 검색어)을 프로젝트별로 서버에 저장한다.
 - 동일한 영상 구간은 중복 저장하지 않는다.
 - 저장한 클립 목록에서 해당 타임스탬프부터 다시 재생하거나 삭제할 수 있다.
-- 북마크 데이터는 `data/bookmarks.json`에 저장하며, 앱 DB 없이도 서버 재시작 후 유지한다.
+- 저장 직후에는 `빠른 저장`에 보관하고, 사용자는 여러 프로젝트별 컬렉션에 클립을 추가할 수 있다.
+- 컬렉션은 생성·이름 변경·삭제할 수 있으며, 컬렉션 삭제 시 포함된 클립은 빠른 저장으로 돌아간다.
+- 북마크와 컬렉션 데이터는 `data/bookmarks.json`에 저장하며, 앱 DB 없이도 서버 재시작 후 유지한다.
 
 ### FR-5. 자연어 쿼리
 두 가지 질의 모드를 제공한다.
@@ -170,6 +172,12 @@ VideoQuery/
 | `GET  /api/bookmarks?projectId=...` | 프로젝트 북마크 목록      | 서버 파일 저장소 조회                                                                                                                   |
 | `POST /api/bookmarks`         | 관심 클립 북마크 저장      | 서버 파일 저장소에 클립 메타데이터 추가                                                                                                 |
 | `DELETE /api/bookmarks/{id}`  | 관심 클립 북마크 삭제      | 서버 파일 저장소에서 클립 메타데이터 삭제                                                                                               |
+| `GET  /api/collections?projectId=...` | 프로젝트 컬렉션 목록 | 서버 파일 저장소 조회                                                                                                                    |
+| `POST /api/collections`       | 컬렉션 생성                 | 서버 파일 저장소에 컬렉션 추가                                                                                                           |
+| `PUT  /api/collections/{id}`  | 컬렉션 이름/설명 변경       | 서버 파일 저장소의 컬렉션 수정                                                                                                           |
+| `DELETE /api/collections/{id}` | 컬렉션 삭제                | 컬렉션 삭제 및 포함 클립의 빠른 저장 복귀                                                                                                |
+| `POST /api/collections/{id}/bookmarks` | 클립을 컬렉션에 추가 | 서버 파일 저장소의 컬렉션-북마크 연결                                                                                                    |
+| `DELETE /api/collections/{id}/bookmarks/{bookmarkId}` | 컬렉션에서 클립 제거 | 서버 파일 저장소의 컬렉션-북마크 연결 삭제                                                                                         |
 | `POST /api/search`             | 자연어 검색                  | `client.search.query(index_id, query_text, search_options)`                                                                            |
 | `POST /api/analyze`            | 영상 분석(논스트리밍)        | `client.analyze(...)` — `model_name="pegasus1.5"`, `analysis_mode="general"`, 대상 = 자산/URL. (스트리밍 `analyze_stream`은 v1 미사용) |
 
@@ -226,6 +234,8 @@ UI 상태 표시: `uploading → (asset ready: 분석 가능) → indexing → r
 3분할 레이아웃:
 - **좌측 사이드바 — 영상 목록**: 항목마다 제목 + 상태 배지(8.4 참조). 클릭 시 인라인 플레이어로 재생.
 - **좌측 사이드바 — 저장한 클립**: 프로젝트에 저장된 북마크를 표시하고, 항목 클릭 시 저장된 타임스탬프부터 재생.
+  - `빠른 저장`은 모든 북마크를 보여주며, 컬렉션을 선택하면 해당 컬렉션의 클립만 보여준다.
+  - 저장 직후 컬렉션 선택 모달에서 여러 컬렉션에 추가할 수 있다.
 - **상단 — 쿼리 바**: `검색 / 질문(분석)` 토글 + 입력창 + 실행. 모드에 따라 결과 영역 렌더링이 바뀐다.
 - **본문 — 결과 영역**:
   - 검색: 클립 카드(썸네일 + `시작–끝` 타임스탬프). 클릭하면 인라인 플레이어로 해당 구간을 그 자리에서 재생(8.6 참조).

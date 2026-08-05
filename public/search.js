@@ -1,5 +1,5 @@
 import { API, state } from './state.js';
-import { escapeHtml, formatTime, showToast } from './utils.js';
+import { closeModals, escapeHtml, formatTime, openModal, showToast } from './utils.js';
 import { closeVideoPreview, navigateToVideoPage } from './videos.js';
 import { apiFetch } from './auth.js';
 import { selectVideoForAnalysis, updateAnalyzeIndicator } from './analyze.js';
@@ -15,6 +15,8 @@ const searchExportToolbar = document.getElementById('search-export-toolbar');
 const searchResultsCount = document.getElementById('search-results-count');
 const bookmarkList = document.getElementById('bookmark-list');
 const bookmarkCount = document.getElementById('bookmark-count');
+const collectionList = document.getElementById('collection-list');
+const collectionPickerList = document.getElementById('collection-picker-list');
 
 const HISTORY_KEY_PREFIX = 'videoquery_search_history_';
 const MAX_HISTORY = 20;
@@ -22,7 +24,12 @@ const MAX_HISTORY = 20;
 let searchImageFile = null;
 let currentSearchExport = null;
 let currentBookmarks = [];
-let bookmarkProjectId = null;
+let currentCollections = [];
+let selectedCollectionId = null;
+let collectionPickerBookmarkId = null;
+let collectionCreationFromPicker = false;
+let collectionEditTarget = null;
+let collectionDeleteTarget = null;
 
 function setSearchExportState(exportData) {
   currentSearchExport = exportData;
@@ -34,7 +41,10 @@ function setSearchExportState(exportData) {
 export function resetSearchState() {
   setSearchExportState(null);
   currentBookmarks = [];
-  bookmarkProjectId = null;
+  currentCollections = [];
+  selectedCollectionId = null;
+  collectionPickerBookmarkId = null;
+  collectionCreationFromPicker = false;
   renderBookmarks();
 }
 
@@ -49,39 +59,118 @@ function isBookmarked(clip) {
 export async function loadBookmarks() {
   const projectId = state.currentProject?.id;
   if (!projectId) return;
-  bookmarkProjectId = projectId;
 
   try {
-    const res = await apiFetch(`${API}/api/bookmarks?projectId=${encodeURIComponent(projectId)}`);
-    if (!res.ok) throw new Error('북마크를 불러오지 못했습니다.');
-    const data = await res.json();
+    const [bookmarkRes, collectionRes] = await Promise.all([
+      apiFetch(`${API}/api/bookmarks?projectId=${encodeURIComponent(projectId)}`),
+      apiFetch(`${API}/api/collections?projectId=${encodeURIComponent(projectId)}`),
+    ]);
+    if (!bookmarkRes.ok || !collectionRes.ok) throw new Error('저장한 클립을 불러오지 못했습니다.');
+    const [bookmarkData, collectionData] = await Promise.all([
+      bookmarkRes.json(),
+      collectionRes.json(),
+    ]);
     if (state.currentProject?.id !== projectId) return;
-    currentBookmarks = data.bookmarks || [];
+    currentBookmarks = bookmarkData.bookmarks || [];
+    currentCollections = collectionData.collections || [];
+    if (selectedCollectionId && !currentCollections.some((item) => item.id === selectedCollectionId)) {
+      selectedCollectionId = null;
+    }
     renderBookmarks();
     if (currentSearchExport?.projectId === projectId) renderCurrentSearchResults();
   } catch (err) {
     if (state.currentProject?.id === projectId) {
       currentBookmarks = [];
+      currentCollections = [];
       renderBookmarks();
     }
   }
 }
 
+function getCollectionBookmarkIds(collectionId) {
+  return new Set(
+    currentCollections.find((collection) => collection.id === collectionId)?.bookmarkIds || []
+  );
+}
+
+function getBookmarksForSelection() {
+  if (selectedCollectionId) {
+    const bookmarkIds = getCollectionBookmarkIds(selectedCollectionId);
+    return currentBookmarks.filter((bookmark) => bookmarkIds.has(bookmark.id));
+  }
+
+  return currentBookmarks;
+}
+
+function getQuickSaveBookmarks() {
+  return currentBookmarks;
+}
+
+function collectionBookmarkCount(collection) {
+  const bookmarkIds = new Set(collection.bookmarkIds || []);
+  return currentBookmarks.filter((bookmark) => bookmarkIds.has(bookmark.id)).length;
+}
+
+function renderCollections() {
+  if (!collectionList) return;
+  const quickSaveCount = getQuickSaveBookmarks().length;
+  const items = [{ id: '', name: '모든 클립', count: quickSaveCount }, ...currentCollections.map((collection) => ({
+    id: collection.id,
+    name: collection.name,
+    count: collectionBookmarkCount(collection),
+  }))];
+
+  collectionList.innerHTML = items.map((item) => {
+    const isActive = (selectedCollectionId || '') === item.id;
+    const isQuickSave = !item.id;
+    return `
+      <div class="collection-row${isActive ? ' active' : ''}">
+        <button class="collection-select" data-collection-id="${item.id}" type="button">
+          <span class="collection-name">${isQuickSave ? '&#9734; ' : ''}${escapeHtml(item.name)}</span>
+          <span class="collection-count">${item.count}</span>
+        </button>
+        ${!isQuickSave ? `
+          <button class="collection-action collection-rename" data-collection-id="${item.id}" type="button" title="이름 변경">&#9998;</button>
+          <button class="collection-action collection-delete" data-collection-id="${item.id}" type="button" title="삭제">&times;</button>` : ''}
+      </div>`;
+  }).join('');
+
+  collectionList.querySelectorAll('.collection-select').forEach((button) => {
+    button.addEventListener('click', () => {
+      selectedCollectionId = button.dataset.collectionId || null;
+      renderCollections();
+      renderBookmarks();
+    });
+  });
+  collectionList.querySelectorAll('.collection-rename').forEach((button) => {
+    button.addEventListener('click', () => openEditCollectionModal(button.dataset.collectionId));
+  });
+  collectionList.querySelectorAll('.collection-delete').forEach((button) => {
+    button.addEventListener('click', () => {
+      collectionDeleteTarget = currentCollections.find((item) => item.id === button.dataset.collectionId);
+      openModal('modal-delete-collection');
+    });
+  });
+}
+
 function renderBookmarks() {
   if (!bookmarkList || !bookmarkCount) return;
   bookmarkCount.textContent = `(${currentBookmarks.length})`;
-  if (!currentBookmarks.length) {
-    bookmarkList.innerHTML = '<li class="bookmark-empty">저장한 클립이 없습니다.</li>';
+  renderCollections();
+  const visibleBookmarks = getBookmarksForSelection();
+  if (!visibleBookmarks.length) {
+    bookmarkList.innerHTML = `<li class="bookmark-empty">${selectedCollectionId ? '이 컬렉션에 저장한 클립이 없습니다.' : '저장한 클립이 없습니다.'}</li>`;
     return;
   }
 
-  bookmarkList.innerHTML = currentBookmarks.map((bookmark) => `
+  bookmarkList.innerHTML = visibleBookmarks.map((bookmark) => `
     <li class="bookmark-item" data-bookmark-id="${bookmark.id}">
       <button class="bookmark-item-main" type="button">
         <span class="bookmark-item-title">${escapeHtml(bookmark.videoTitle)}</span>
         <span class="bookmark-item-time">${formatTime(bookmark.start)} – ${formatTime(bookmark.end)}</span>
       </button>
       <div class="bookmark-item-actions">
+        <button class="bookmark-item-organize" type="button" title="컬렉션에 추가" aria-label="컬렉션에 추가">&#9776;</button>
         <button class="bookmark-item-note" type="button" title="메모 편집" aria-label="메모 편집">${bookmark.note ? '&#128221;' : '&#9998;'}</button>
         <button class="bookmark-item-delete" type="button" title="북마크 삭제" aria-label="북마크 삭제">&times;</button>
       </div>
@@ -100,6 +189,11 @@ function renderBookmarks() {
       const bookmark = currentBookmarks.find((b) => b.id === li.dataset.bookmarkId);
       if (!bookmark) return;
       openClipNoteModal(bookmark);
+    });
+  });
+  bookmarkList.querySelectorAll('.bookmark-item-organize').forEach((button) => {
+    button.addEventListener('click', () => {
+      openCollectionPicker(button.closest('.bookmark-item').dataset.bookmarkId);
     });
   });
   bookmarkList.querySelectorAll('.bookmark-item-delete').forEach((button) => {
@@ -136,8 +230,10 @@ async function saveBookmark(clip) {
     }),
   });
   if (!res.ok) throw new Error(await getResponseError(res, '북마크 저장에 실패했습니다.'));
-  currentBookmarks.unshift(await res.json());
+  const saved = await res.json();
+  currentBookmarks.unshift(saved);
   renderBookmarks();
+  return saved;
 }
 
 async function deleteBookmark(bookmarkId) {
@@ -148,9 +244,7 @@ async function deleteBookmark(bookmarkId) {
     { method: 'DELETE' }
   );
   if (!res.ok) throw new Error(await getResponseError(res, '북마크 삭제에 실패했습니다.'));
-  currentBookmarks = currentBookmarks.filter((bookmark) => bookmark.id !== bookmarkId);
-  renderBookmarks();
-  if (currentSearchExport?.projectId === projectId) renderCurrentSearchResults();
+  await loadBookmarks();
 }
 
 async function updateBookmarkNote(bookmarkId, note) {
@@ -225,14 +319,181 @@ async function toggleBookmark(clip) {
       await deleteBookmark(existing.id);
       showToast('북마크를 삭제했습니다.');
     } else {
-      await saveBookmark(clip);
+      const saved = await saveBookmark(clip);
       renderCurrentSearchResults();
       showToast('클립을 북마크에 저장했습니다.');
+      openCollectionPicker(saved.id);
     }
   } catch (err) {
     showToast(err.message || '북마크 처리에 실패했습니다.', 'error');
   }
 }
+
+function renderCollectionPicker() {
+  if (!collectionPickerList) return;
+  const bookmark = currentBookmarks.find((item) => item.id === collectionPickerBookmarkId);
+  if (!bookmark) {
+    collectionPickerList.innerHTML = '<p class="modal-help">저장할 클립을 찾을 수 없습니다.</p>';
+    return;
+  }
+  if (!currentCollections.length) {
+    collectionPickerList.innerHTML = '<p class="modal-help">아직 컬렉션이 없습니다. 새 컬렉션을 만들어 보세요.</p>';
+    return;
+  }
+
+  collectionPickerList.innerHTML = currentCollections.map((collection) => `
+    <label class="collection-picker-item">
+      <input type="checkbox" value="${collection.id}" ${collection.bookmarkIds?.includes(bookmark.id) ? 'checked' : ''}>
+      <span>${escapeHtml(collection.name)}</span>
+      <small>${collectionBookmarkCount(collection)}개</small>
+    </label>`).join('');
+}
+
+function openCollectionPicker(bookmarkId) {
+  collectionPickerBookmarkId = bookmarkId;
+  renderCollectionPicker();
+  openModal('modal-collection-picker');
+}
+
+async function applyCollectionPicker() {
+  const projectId = state.currentProject?.id;
+  const bookmarkId = collectionPickerBookmarkId;
+  if (!projectId || !bookmarkId) return;
+
+  const checkedIds = new Set(
+    [...collectionPickerList.querySelectorAll('input[type="checkbox"]')]
+      .filter((input) => input.checked)
+      .map((input) => input.value)
+  );
+  const requests = [];
+  currentCollections.forEach((collection) => {
+    const hasBookmark = collection.bookmarkIds?.includes(bookmarkId);
+    const shouldHaveBookmark = checkedIds.has(collection.id);
+    if (shouldHaveBookmark && !hasBookmark) {
+      requests.push(apiFetch(`${API}/api/collections/${collection.id}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, bookmarkId }),
+      }));
+    } else if (!shouldHaveBookmark && hasBookmark) {
+      requests.push(apiFetch(
+        `${API}/api/collections/${collection.id}/bookmarks/${bookmarkId}?projectId=${encodeURIComponent(projectId)}`,
+        { method: 'DELETE' }
+      ));
+    }
+  });
+  const responses = await Promise.all(requests);
+  const failed = responses.find((res) => !res.ok);
+  if (failed) throw new Error(await getResponseError(failed, '컬렉션 저장에 실패했습니다.'));
+
+  await loadBookmarks();
+  closeModals();
+  showToast('컬렉션을 업데이트했습니다.');
+}
+
+function openNewCollectionModal(fromPicker = false) {
+  collectionEditTarget = null;
+  collectionCreationFromPicker = fromPicker;
+  if (!fromPicker) collectionPickerBookmarkId = null;
+  document.getElementById('collection-modal-title').textContent = '새 컬렉션';
+  document.getElementById('input-collection-name').value = '';
+  document.getElementById('input-collection-description').value = '';
+  document.getElementById('btn-save-collection').textContent = '생성';
+  closeModals();
+  openModal('modal-collection');
+}
+
+function openEditCollectionModal(collectionId) {
+  const collection = currentCollections.find((item) => item.id === collectionId);
+  if (!collection) return;
+  collectionEditTarget = collection;
+  document.getElementById('collection-modal-title').textContent = '컬렉션 편집';
+  document.getElementById('input-collection-name').value = collection.name;
+  document.getElementById('input-collection-description').value = collection.description || '';
+  document.getElementById('btn-save-collection').textContent = '저장';
+  openModal('modal-collection');
+}
+
+async function saveCollectionFromModal() {
+  const projectId = state.currentProject?.id;
+  const nameInput = document.getElementById('input-collection-name');
+  const descriptionInput = document.getElementById('input-collection-description');
+  const name = nameInput.value.trim();
+  if (!projectId || !name) return;
+
+  const button = document.getElementById('btn-save-collection');
+  button.disabled = true;
+  try {
+    const isEdit = Boolean(collectionEditTarget);
+    const res = await apiFetch(
+      isEdit ? `${API}/api/collections/${collectionEditTarget.id}` : `${API}/api/collections`,
+      {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          name,
+          description: descriptionInput.value.trim(),
+        }),
+      }
+    );
+    if (!res.ok) throw new Error(await getResponseError(res, '컬렉션 저장에 실패했습니다.'));
+    await loadBookmarks();
+    const pickerBookmarkId = collectionCreationFromPicker ? collectionPickerBookmarkId : null;
+    collectionEditTarget = null;
+    collectionCreationFromPicker = false;
+    closeModals();
+    if (!isEdit && pickerBookmarkId) openCollectionPicker(pickerBookmarkId);
+    showToast(isEdit ? '컬렉션을 수정했습니다.' : '컬렉션을 만들었습니다.');
+  } catch (err) {
+    showToast(err.message || '컬렉션 저장에 실패했습니다.', 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function deleteSelectedCollection() {
+  const projectId = state.currentProject?.id;
+  if (!projectId || !collectionDeleteTarget) return;
+  const button = document.getElementById('btn-confirm-delete-collection');
+  button.disabled = true;
+  try {
+    const res = await apiFetch(
+      `${API}/api/collections/${collectionDeleteTarget.id}?projectId=${encodeURIComponent(projectId)}`,
+      { method: 'DELETE' }
+    );
+    if (!res.ok) throw new Error(await getResponseError(res, '컬렉션 삭제에 실패했습니다.'));
+    if (selectedCollectionId === collectionDeleteTarget.id) selectedCollectionId = null;
+    collectionDeleteTarget = null;
+    closeModals();
+    await loadBookmarks();
+    showToast('컬렉션을 삭제했습니다. 클립은 모든 클립에 남아 있습니다.');
+  } catch (err) {
+    showToast(err.message || '컬렉션 삭제에 실패했습니다.', 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+document.getElementById('btn-new-collection')?.addEventListener('click', () => openNewCollectionModal());
+document.getElementById('btn-save-collection')?.addEventListener('click', saveCollectionFromModal);
+document.getElementById('btn-apply-collection-picker')?.addEventListener('click', async () => {
+  const button = document.getElementById('btn-apply-collection-picker');
+  button.disabled = true;
+  try {
+    await applyCollectionPicker();
+  } catch (err) {
+    showToast(err.message || '컬렉션 저장에 실패했습니다.', 'error');
+  } finally {
+    button.disabled = false;
+  }
+});
+document.getElementById('btn-create-collection-from-picker')?.addEventListener('click', () => openNewCollectionModal(true));
+document.getElementById('btn-confirm-delete-collection')?.addEventListener('click', deleteSelectedCollection);
+
+document.getElementById('input-collection-name')?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') saveCollectionFromModal();
+});
 
 function getHistoryKey() {
   return HISTORY_KEY_PREFIX + (state.currentProject?.id || 'global');
