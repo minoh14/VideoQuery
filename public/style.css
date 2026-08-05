@@ -1301,6 +1301,137 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* Video Tags & Memo */
+.video-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.tag-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  border-radius: 10px;
+  background: var(--accent-light);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.tag-chip-more {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+.tag-chip-editable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tag-chip-remove {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.tag-chip-remove:hover {
+  color: #dc2626;
+}
+
+.tag-input-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  background: var(--bg-input);
+}
+
+.tag-chips-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.825rem;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 100px;
+}
+
+.meta-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.meta-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: block;
+}
+
+.meta-tags-section {
+  margin-bottom: 16px;
+}
+
+.meta-memo-section {
+  margin-bottom: 16px;
+}
+
+.meta-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+}
+
+.meta-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.btn-memo {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.btn-memo:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.btn-memo.has-content {
+  color: var(--accent);
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;

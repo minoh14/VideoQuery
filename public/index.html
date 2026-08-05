@@ -225,6 +225,30 @@
     </div>
   </div>
 
+  <!-- 모달: 메모/태그 편집 -->
+  <div id="modal-video-meta" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>메모 / 태그</h3>
+      <div class="meta-tags-section">
+        <label class="meta-label">태그</label>
+        <div class="tag-input-wrapper">
+          <div id="tag-chips-edit" class="tag-chips-edit"></div>
+          <input type="text" id="input-new-tag" class="tag-input" placeholder="태그 입력 후 Enter" maxlength="30">
+        </div>
+        <span class="meta-hint">최대 10개, 각 30자 이내</span>
+      </div>
+      <div class="meta-memo-section">
+        <label class="meta-label">메모</label>
+        <textarea id="input-video-memo" class="meta-textarea" placeholder="메모를 입력하세요..." maxlength="1000" rows="4"></textarea>
+        <span class="meta-hint"><span id="memo-char-count">0</span>/1000</span>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost modal-cancel">취소</button>
+        <button id="btn-save-meta" class="btn btn-primary">저장</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" class="toast-container"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>

@@ -13,4 +13,5 @@ export const state = {
   allVideoStatuses: {},
   selectedAnalyzeVideo: null,
   uploadMode: 'url',
+  videoMetas: {},
 };

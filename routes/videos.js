@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const multer = require('multer');
+const { getMeta, setMeta, deleteMeta, getBatchMeta, validateMeta } = require('../lib/video-meta-store');
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
@@ -480,6 +481,62 @@ router.get('/:id/status', async (req, res, next) => {
   }
 });
 
+router.get('/meta/batch', async (req, res, next) => {
+  try {
+    const { indexId, ids } = req.query;
+    if (!indexId || !ids) {
+      return res.status(400).json({ error: 'indexId and ids are required' });
+    }
+    const videoIds = ids.split(',').filter(Boolean);
+    const metas = await getBatchMeta(indexId, videoIds);
+    res.json(metas);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/:id/meta', async (req, res, next) => {
+  try {
+    const { indexId } = req.query;
+    if (!indexId) {
+      return res.status(400).json({ error: 'indexId query parameter is required' });
+    }
+    const meta = await getMeta(indexId, req.params.id);
+    res.json(meta);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/:id/meta', async (req, res, next) => {
+  try {
+    const { indexId } = req.query;
+    if (!indexId) {
+      return res.status(400).json({ error: 'indexId query parameter is required' });
+    }
+    const { tags, memo } = req.body;
+    const error = validateMeta({ tags, memo });
+    if (error) return res.status(400).json({ error });
+    const result = await setMeta(indexId, req.params.id, { tags, memo });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id/meta', async (req, res, next) => {
+  try {
+    const { indexId } = req.query;
+    if (!indexId) {
+      return res.status(400).json({ error: 'indexId query parameter is required' });
+    }
+    await deleteMeta(indexId, req.params.id);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.delete('/:id', async (req, res, next) => {
   try {
     const { indexId } = req.query;
@@ -490,6 +547,7 @@ router.delete('/:id', async (req, res, next) => {
     }
 
     await req.tlClient.indexes.indexedAssets.delete(indexId, id);
+    await deleteMeta(indexId, id).catch(() => {});
 
     res.status(204).end();
   } catch (err) {

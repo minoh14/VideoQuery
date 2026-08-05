@@ -6,6 +6,7 @@ import { loadVideos, uploadVideo, deleteVideo, closeVideoPreview } from './video
 import { executeSearch } from './search.js';
 import { executeAnalyze } from './analyze.js';
 import { getUserName, login, logout, restoreSession } from './auth.js';
+import './memos.js';
 
 // --- Theme Toggle ---
 

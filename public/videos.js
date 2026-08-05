@@ -2,6 +2,7 @@ import { API, state } from './state.js';
 import { escapeHtml, formatDuration, openModal, closeModals, showToast, showAlert } from './utils.js';
 import { selectVideoForAnalysis } from './analyze.js';
 import { apiFetch } from './auth.js';
+import { fetchBatchMeta, renderTagChips, openMetaEditor } from './memos.js';
 
 const videoList = document.getElementById('video-list');
 
@@ -26,8 +27,37 @@ export async function loadVideos() {
     const data = await res.json();
     state.videoTotalPage = data.pageInfo?.totalPage || 1;
     renderVideos(data.videos, data.pageInfo?.totalResults || data.videos.length);
+    loadVideoMetas(data.videos);
   } catch (err) {
     videoList.innerHTML = '<li>영상 목록을 불러오지 못했습니다.</li>';
+  }
+}
+
+async function loadVideoMetas(videos) {
+  const ids = videos.filter((v) => v.status === 'ready').map((v) => v.id);
+  if (!ids.length) return;
+  try {
+    const metas = await fetchBatchMeta(ids);
+    Object.assign(state.videoMetas, metas);
+    ids.forEach((id) => {
+      const meta = state.videoMetas[id];
+      const li = videoList.querySelector(`li[data-id="${id}"]`);
+      if (!li) return;
+      const existingTags = li.querySelector('.video-tags');
+      if (existingTags) existingTags.remove();
+      if (meta && meta.tags && meta.tags.length) {
+        const content = li.querySelector('.video-item-content');
+        const row = content.querySelector('.video-item-row');
+        row.insertAdjacentHTML('afterend', renderTagChips(meta.tags));
+      }
+      const memoBtn = li.querySelector('.btn-memo');
+      if (memoBtn) {
+        const hasMemo = meta && (meta.memo || (meta.tags && meta.tags.length));
+        memoBtn.classList.toggle('has-content', !!hasMemo);
+      }
+    });
+  } catch {
+    // silent
   }
 }
 
@@ -73,6 +103,9 @@ function renderVideos(videos, totalResults) {
         ? `<img class="video-item-thumb" src="${v.thumbnailUrl}" alt="">`
         : '<div class="video-item-thumb video-item-thumb-empty"></div>';
       const durationStr = v.duration ? formatDuration(v.duration) : '';
+      const meta = state.videoMetas[v.id];
+      const tagsHtml = meta ? renderTagChips(meta.tags) : '';
+      const hasMemo = meta && (meta.memo || (meta.tags && meta.tags.length));
       return `
       <li data-id="${v.id}" data-asset-id="${v.assetId || ''}">
         <div class="video-item-content">
@@ -80,9 +113,11 @@ function renderVideos(videos, totalResults) {
             ${thumb}
             <span class="video-name">${escapeHtml(v.filename || '제목 없음')}</span>
             ${durationStr ? `<span class="video-duration">${durationStr}</span>` : ''}
+            <button class="btn-memo${hasMemo ? ' has-content' : ''}" data-id="${v.id}" title="메모/태그">&#9998;</button>
             <span class="badge ${badge.cls}">${badge.label}</span>
             <button class="btn-delete-video" data-id="${v.id}" title="삭제">&times;</button>
           </div>
+          ${tagsHtml}
           ${isProcessing ? '<div class="progress-bar"><div class="progress-bar-fill"></div></div>' : ''}
         </div>
       </li>`;
@@ -102,6 +137,14 @@ function renderVideos(videos, totalResults) {
   } else {
     paginationEl.innerHTML = '';
   }
+
+  videoList.querySelectorAll('.btn-memo').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const video = videos.find((v) => v.id === btn.dataset.id);
+      if (video) openMetaEditor(video);
+    });
+  });
 
   videoList.querySelectorAll('.btn-delete-video').forEach((btn) => {
     btn.addEventListener('click', (e) => {
