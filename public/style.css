@@ -1963,6 +1963,11 @@ body {
   color: #991b1b;
 }
 
+#modal-alert-message {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .toast.toast-out {
   animation: toast-out 0.3s ease forwards;
 }

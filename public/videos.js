@@ -78,6 +78,15 @@ function renderVideos(videos, totalResults) {
   const durationText = totalDuration > 0 ? ` (${formatDuration(totalDuration)})` : '';
   document.getElementById('video-count').textContent = totalCount > 0 ? `(${totalCount})${durationText}` : '';
 
+  const settledAssetIds = new Set(
+    videos.filter((v) => v.status === 'ready' || v.status === 'failed').map((v) => v.assetId).filter(Boolean)
+  );
+  if (settledAssetIds.size) {
+    state.pendingUploads = state.pendingUploads.filter((p) => !p.assetId || !settledAssetIds.has(p.assetId));
+  }
+  const pendingAssetIds = new Set(state.pendingUploads.map((p) => p.assetId).filter(Boolean));
+  const filteredVideos = videos.filter((v) => !pendingAssetIds.has(v.assetId));
+
   const pendingHtml = state.pendingUploads
     .map((p) => {
       const isIndexing = Boolean(p.assetId);
@@ -96,15 +105,6 @@ function renderVideos(videos, totalResults) {
       </li>`;
     })
     .join('');
-
-  const settledAssetIds = new Set(
-    videos.filter((v) => v.status === 'ready' || v.status === 'failed').map((v) => v.assetId).filter(Boolean)
-  );
-  if (settledAssetIds.size) {
-    state.pendingUploads = state.pendingUploads.filter((p) => !p.assetId || !settledAssetIds.has(p.assetId));
-  }
-  const pendingAssetIds = new Set(state.pendingUploads.map((p) => p.assetId).filter(Boolean));
-  const filteredVideos = videos.filter((v) => !pendingAssetIds.has(v.assetId));
 
   if (!filteredVideos.length && !state.pendingUploads.length) {
     videoList.innerHTML = '<li style="color:#6b7280">영상이 없습니다.</li>';
@@ -345,6 +345,22 @@ async function checkStatuses() {
     const data = await res.json();
     const statuses = data.statuses || [];
     const pendingStatuses = data.pendingStatuses || [];
+    const failedPendingStatuses = pendingStatuses.filter((item) => item.status === 'failed');
+
+    if (failedPendingStatuses.length) {
+      const failedAssetIds = new Set(failedPendingStatuses.map((item) => item.assetId));
+      const failedUploads = state.pendingUploads.filter((item) => failedAssetIds.has(item.assetId));
+      state.pendingUploads = state.pendingUploads.filter((item) => !failedAssetIds.has(item.assetId));
+
+      if (failedUploads.length) {
+        const messages = failedUploads.map((upload) => {
+          const failure = failedPendingStatuses.find((item) => item.assetId === upload.assetId);
+          return `"${upload.title}"\n${formatUploadFailureMessage(failure?.error)}`;
+        });
+        showAlert(messages.join('\n\n'), '영상 업로드 실패');
+        loadVideos();
+      }
+    }
 
     const allAssetIds = new Set(statuses.map((s) => s.assetId).filter(Boolean));
     const stillProcessingAssetIds = new Set(
@@ -369,6 +385,22 @@ async function checkStatuses() {
   } catch (err) {
     return false;
   }
+}
+
+function formatUploadFailureMessage(failure) {
+  const code = failure?.code;
+  const rawMessage = String(failure?.message || '');
+
+  if (code === 'video_filesize_too_large') {
+    const currentSize = rawMessage.match(/current size is\s+([^'"]+)/i)?.[1]?.trim().replace(/\.$/, '');
+    return `영상 파일이 너무 큽니다. 4.0GB보다 작은 파일을 사용해주세요.${currentSize ? ` 현재 파일 크기: ${currentSize}.` : ''}`;
+  }
+
+  if (code === 'required_fields_missing') {
+    return '파일의 기술 메타데이터를 읽을 수 없습니다. 파일이 손상되었거나 지원하지 않는 형식일 수 있습니다. 다른 파일로 다시 시도해주세요.';
+  }
+
+  return '영상 업로드에 실패했습니다. 파일 형식과 크기를 확인한 후 다시 시도해주세요.';
 }
 
 export function stopPolling() {
@@ -591,6 +623,7 @@ async function uploadVideoByFile() {
       updatePendingUploadProgress(pending);
     } catch (err) {
       state.pendingUploads = state.pendingUploads.filter((p) => p !== pending);
+      loadVideos();
       showToast(`${file.name} 업로드 실패`, 'error');
     }
   }));

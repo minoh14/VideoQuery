@@ -14,6 +14,30 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200
 const multipartSessions = new Map();
 const MAX_MULTIPART_SIZE = 10 * 1024 * 1024 * 1024;
 const MULTIPART_SESSION_TTL = 24 * 60 * 60 * 1000;
+const UPLOAD_FAILURE_TTL = 60 * 60 * 1000;
+const uploadFailures = new Map();
+
+function extractUploadFailure(error) {
+  const assetError = error?.assetError || null;
+  const rawMessage = String(error?.message || 'Asset processing failed');
+  const codeMatch = rawMessage.match(/"code"\s*:\s*"([^"]+)"/);
+  const messageMatch = rawMessage.match(/"message"\s*:\s*"([^"]+)"/);
+  const code = codeMatch?.[1] || assetError?.code || error?.code || null;
+  const message = messageMatch?.[1] || assetError?.message || rawMessage;
+  return { code, message };
+}
+
+function rememberUploadFailure(assetId, error) {
+  if (!assetId) return;
+  uploadFailures.set(assetId, extractUploadFailure(error));
+  const cleanupTimer = setTimeout(() => uploadFailures.delete(assetId), UPLOAD_FAILURE_TTL);
+  cleanupTimer.unref?.();
+}
+
+function getAssetFailure(asset) {
+  if (asset?.status !== 'failed') return null;
+  return extractUploadFailure({ assetError: asset.error });
+}
 
 function waitForAssetReady(tlClient, assetId, maxAttempts = 60) {
   return new Promise((resolve, reject) => {
@@ -91,6 +115,7 @@ async function indexMultipartAsset(session, tlClient) {
       enableVideoStream: true,
     });
   } catch (err) {
+    rememberUploadFailure(session.assetId, err);
     console.error(`Failed to index multipart asset ${session.assetId}:`, {
       message: err.message,
       assetError: err.assetError || null,
@@ -309,6 +334,8 @@ router.post('/', async (req, res, next) => {
           })
         )
         .catch((err) => {
+          rememberUploadFailure(asset.id, err);
+          removeSourceByAssetId(indexId, asset.id).catch(() => {});
           console.error(`Failed to index URL asset ${asset.id}:`, {
             message: err.message,
             assetError: err.assetError || null,
@@ -360,6 +387,7 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
         })
       )
       .catch((err) => {
+        rememberUploadFailure(asset.id, err);
         console.error(`Failed to index direct asset ${asset.id}:`, {
           message: err.message,
           assetError: err.assetError || null,
@@ -515,14 +543,19 @@ router.get('/statuses', async (req, res, next) => {
       await Promise.all(ids.map(async (assetId) => {
         try {
           const asset = await req.tlClient.assets.retrieve(assetId);
+          const failure = uploadFailures.get(assetId) || getAssetFailure(asset);
           pendingStatuses.push({
             id: null,
             assetId,
             filename: asset.systemMetadata?.filename || null,
-            status: asset.status === 'ready' ? 'pending_index' : asset.status,
+            status: failure ? 'failed' : (asset.status === 'ready' ? 'pending_index' : asset.status),
+            error: failure,
           });
         } catch {
-          // asset not found or error — ignore
+          const failure = uploadFailures.get(assetId);
+          if (failure) {
+            pendingStatuses.push({ id: null, assetId, status: 'failed', error: failure });
+          }
         }
       }));
     }
